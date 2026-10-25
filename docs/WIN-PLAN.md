@@ -13,9 +13,9 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - [x] Compare endpoint + UI: rules vs Gemma side-by-side
 - [x] Dockerfile + docker-compose
 - [x] Judge-first README + MLH-SUBMISSION.md + demo-script.md
-- [x] Fixtures: typecheck, pytest, OOM, npm/disk patterns including ENOSPC
+- [x] Fixtures: typecheck, pytest, OOM, npm/disk/ENOSPC, checkout-auth
 - [ ] Public demo URL (tunnel) — nice-to-have; local demo is documented honestly
-- [ ] Screenshot fixture image under `docs/fixtures-img/` for multimodal live demo
+- [x] Screenshot fixture image under `docs/fixtures-img/` for multimodal live demo
 - [ ] MLH submit both categories (~5:00 PM IST)
 
 ## Demo story (2–3 min)
