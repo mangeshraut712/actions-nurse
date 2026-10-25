@@ -5,6 +5,8 @@ on:
       fixture:
         description: Fixture filename under fixtures/
         default: npm-typecheck.txt
+permissions:
+  contents: read
 jobs:
   nurse:
     runs-on: ubuntu-latest

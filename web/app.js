@@ -50,6 +50,7 @@ function renderResult(data) {
 
 async function boot() {
   const healthEl = document.getElementById('health');
+  const runtimeHint = document.getElementById('runtimeHint');
   const fixturesEl = document.getElementById('fixtures');
   const triageBtn = document.getElementById('triage');
   const compareBtn = document.getElementById('compare');
@@ -57,23 +58,35 @@ async function boot() {
   const logEl = document.getElementById('log');
   const fileInput = document.getElementById('image');
   const fileLabel = document.querySelector('.file');
+  let fileStatus = null;
   const screenshotDemoBtn = document.getElementById('loadScreenshotDemo');
   const demoStatus = document.getElementById('demoStatus');
   const preview = document.getElementById('imagePreview');
   const previewImage = document.getElementById('previewImage');
   const previewCaption = document.getElementById('previewCaption');
+  let runtimeHealth = null;
+  let previewUrl = null;
 
   function setStatus(message) {
     demoStatus.textContent = message;
   }
 
+  function clearResults() {
+    document.getElementById('result').hidden = true;
+    document.getElementById('comparePanel').hidden = true;
+  }
+
   function showImage(file, caption) {
     if (!file) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
       preview.hidden = true;
       previewImage.removeAttribute('src');
       return;
     }
-    previewImage.src = URL.createObjectURL(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(file);
+    previewImage.src = previewUrl;
     previewCaption.textContent = caption || `Attached: ${file.name}`;
     preview.hidden = false;
   }
@@ -81,8 +94,7 @@ async function boot() {
   clearBtn.addEventListener('click', () => {
     logEl.value = '';
     if (fileInput) fileInput.value = '';
-    document.getElementById('result').hidden = true;
-    document.getElementById('comparePanel').hidden = true;
+    clearResults();
     document.querySelector('.file-selected')?.replaceChildren();
     showImage(null);
     setStatus('Ready for another failure. Choose a fixture, paste a log, or load the bundled red screenshot.');
@@ -93,8 +105,16 @@ async function boot() {
   try {
     const res = await fetch('/api/health');
     const health = await res.json();
+    runtimeHealth = health;
     healthEl.textContent = health.rules_only ? 'Rules-only demo' : (health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key');
     healthEl.className = 'pill ok';
+    if (health.rules_only) {
+      runtimeHint.textContent = 'Rules-only mode is active. Diagnoses use deterministic rules. Commands are suggestions only — review before running.';
+    } else if (!health.gemma_key) {
+      runtimeHint.textContent = 'No Gemini API key is configured. Rules still diagnose logs; add a key to try Gemma 4 with a 12-second budget. Commands are suggestions only — review before running.';
+    } else {
+      runtimeHint.textContent = 'Gemma 4 is attempted first with a 12-second budget. Deterministic rules are the reliable fallback. Commands are suggestions only — review before running.';
+    }
   } catch (err) {
     healthEl.textContent = 'API offline';
     healthEl.className = 'pill offline';
@@ -114,6 +134,10 @@ async function boot() {
         const fixRes = await fetch(`/api/fixtures/${encodeURIComponent(name)}`);
         const fixData = await fixRes.json();
         if (fixData.log) logEl.value = fixData.log;
+        if (fileInput) fileInput.value = '';
+        if (fileStatus) fileStatus.textContent = '';
+        showImage(null);
+        clearResults();
         setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage with Gemma 4” to diagnose it.`);
       };
       fixturesEl.appendChild(btn);
@@ -123,13 +147,14 @@ async function boot() {
   }
 
   if (fileInput && fileLabel) {
-    const fileStatus = document.createElement('span');
+    fileStatus = document.createElement('span');
     fileStatus.className = 'file-selected';
     fileLabel.parentNode.insertBefore(fileStatus, fileLabel.nextSibling);
     fileInput.addEventListener('change', () => {
       const file = fileInput.files?.[0];
       fileStatus.textContent = file ? `Attached: ${file.name}` : '';
       showImage(file);
+      clearResults();
       if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage with Gemma 4.');
     });
   }
@@ -137,6 +162,7 @@ async function boot() {
   screenshotDemoBtn?.addEventListener('click', async () => {
     screenshotDemoBtn.disabled = true;
     screenshotDemoBtn.textContent = 'Loading screenshot…';
+    clearResults();
     try {
       const [imageRes, logRes] = await Promise.all([
         fetch('/demo-assets/red-actions-permission-failure.png'),
@@ -148,6 +174,7 @@ async function boot() {
       const transfer = new DataTransfer();
       transfer.items.add(file);
       fileInput.files = transfer.files;
+      fileStatus.textContent = 'Attached: red-actions-permission-failure.png';
       const fixture = await logRes.json();
       logEl.value = fixture.log || '';
       showImage(file, 'Bundled red Actions screenshot — checkout permission failure');
@@ -187,8 +214,15 @@ async function boot() {
     triageBtn.disabled = true;
     const originalText = triageBtn.textContent;
     triageBtn.textContent = 'Triaging failure...';
-    setStatus(file ? 'Sending log + screenshot to the Gemma 4 path…' : 'Sending CI log to the Gemma 4 path…');
-    document.getElementById('comparePanel').hidden = true;
+    const evidenceLabel = file ? 'log + screenshot' : 'CI log';
+    if (runtimeHealth?.rules_only) {
+      setStatus(`Rules-only runtime: diagnosing the ${evidenceLabel}; no model request will be made.`);
+    } else if (!runtimeHealth?.gemma_key) {
+      setStatus(`No Gemini API key is configured. The rules fallback will diagnose the ${evidenceLabel}.`);
+    } else {
+      setStatus(`Trying Gemma 4 with the ${evidenceLabel}; rules fallback is available within 12 seconds.`);
+    }
+    clearResults();
     try {
       let data;
       if (file) {
@@ -228,13 +262,30 @@ async function boot() {
     compareBtn.disabled = true;
     const original = compareBtn.textContent;
     compareBtn.textContent = 'Comparing...';
-    setStatus('Building a transparent side-by-side comparison…');
+    const file = fileInput?.files?.[0];
+    if (runtimeHealth?.rules_only) {
+      setStatus('Rules-only runtime: returning the offline baseline. No Gemma request will be made.');
+    } else if (!runtimeHealth?.gemma_key) {
+      setStatus('No Gemini API key is configured. Showing the rules baseline and an empty Gemma result.');
+    } else {
+      setStatus(`Building a comparison from the CI log${file ? ' and attached screenshot' : ''}…`);
+    }
+    clearResults();
     try {
-      const res = await fetch('/api/compare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ log, model: 'gemma-4-26b-a4b-it' }),
-      });
+      let res;
+      if (file) {
+        const fd = new FormData();
+        fd.append('log', log);
+        fd.append('image', file);
+        fd.append('model', 'gemma-4-26b-a4b-it');
+        res = await fetch('/api/compare-image', { method: 'POST', body: fd });
+      } else {
+        res = await fetch('/api/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ log, model: 'gemma-4-26b-a4b-it' }),
+        });
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const panel = document.getElementById('comparePanel');
@@ -245,11 +296,29 @@ async function boot() {
       document.getElementById('rulesCause').textContent = data.rules?.root_cause || '';
       document.getElementById('rulesFix').textContent = data.rules?.suggested_fix || '';
       const g = data.gemma;
-      document.getElementById('gemmaSummary').textContent = g?.summary || 'Gemma unavailable (key missing or API error) — rules still work.';
+      const gemmaUnavailable = runtimeHealth?.rules_only
+        ? 'Rules-only mode is enabled, so Gemma was skipped. The deterministic baseline is shown.'
+        : !runtimeHealth?.gemma_key
+          ? 'No Gemini API key is configured, so Gemma was skipped. The deterministic baseline is shown.'
+          : 'Gemma did not return a result. Check model availability, network, and the 12-second budget; rules still work.';
+      document.getElementById('gemmaSummary').textContent = g?.summary || gemmaUnavailable;
       document.getElementById('gemmaStep').textContent = g?.failing_step || '—';
       document.getElementById('gemmaCause').textContent = g?.root_cause || '—';
       document.getElementById('gemmaFix').textContent = g?.suggested_fix || '—';
-      setStatus(g ? 'Comparison ready: rules baseline beside Gemma 4.' : 'Rules baseline ready. Gemma needs a configured key in this runtime.');
+      document.getElementById('gemmaInput').textContent = g
+        ? `Gemma received ${file ? 'log + screenshot' : 'log only'}${g.model ? ` · ${g.model}` : ''}`
+        : runtimeHealth?.rules_only
+          ? 'Skipped · rules-only mode'
+          : !runtimeHealth?.gemma_key
+            ? 'Skipped · no API key'
+            : 'No Gemma response returned';
+      setStatus(g
+        ? `Comparison ready: rules used the log; Gemma received ${file ? 'the log and screenshot' : 'the log only'}.`
+        : runtimeHealth?.rules_only
+          ? 'Rules baseline ready. The runtime is forced to rules-only mode, so no Gemma request was made.'
+          : !runtimeHealth?.gemma_key
+            ? 'Rules baseline ready. No Gemini API key is configured, so no Gemma request was made.'
+            : 'Rules baseline ready. Gemma returned no result; check model availability, network, and the 12-second budget.');
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);

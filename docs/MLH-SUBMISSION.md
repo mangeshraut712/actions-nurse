@@ -19,20 +19,20 @@ Built for Hacktoberfest Hack Day Pune x Cloud Native Pune / Best Use of Gemma 4 
 
 ## Links
 - Repo: https://github.com/mangeshraut712/actions-nurse
-- Demo: run locally with the documented `uvicorn nurse:app --port 8787` command, then use **Load red screenshot demo** (no hosted demo URL is claimed; a tunnel would be ephemeral)
+- Demo: [temporary Cloudflare quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) (ephemeral; public instance is intentionally forced to rules-only mode). For Gemma 4, run locally with `NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787`, configure `GEMINI_API_KEY`, then use **Load red screenshot demo**.
 - Demo script: docs/demo-script.md
 
 ## Challenge categories to enter
 - Best Use of Gemma 4
-- Best Open-Source AI Project (if listed)
+- Best Open-Source AI
 
 ## Paste-ready category entries
 
 ### Best Use of Gemma 4
 Actions Nurse makes Gemma 4 useful at the exact moment a CI run turns red. The presenter clicks **Load red screenshot demo**, which loads a bundled GitHub Actions failure screenshot and its matching sanitized `checkout-auth` log; `/api/triage-image` sends both parts to `gemma-4-26b-a4b-it` for a structured diagnosis. The UI shows failing step, root cause, suggested fix, confidence, and copyable—but never executed—commands. A visible 12-second end-to-end model budget and a side-by-side Rules vs Gemma view make the model contribution, response time, and provenance easy to judge. If the key or network is unavailable, a visibly labeled deterministic fallback still returns a safe diagnosis without falsely claiming a model response.
 
-### Best Open-Source AI Project
-Actions Nurse is an MIT-licensed, practical developer tool: FastAPI, vanilla JavaScript, Docker configuration, a composite GitHub Action, and five reproducible red-CI fixtures are all in the repository. It uses an open-weight Gemma 4 model as the preferred reasoning engine while retaining a local deterministic rules path for key-free, reproducible operation. The Action consumes failed workflow logs, emits a markdown report and job summary, and keeps all suggested commands reviewable rather than executing them. Developers can run the complete demo locally with one documented command and no hosted-service dependency.
+### Best Open-Source AI
+Actions Nurse is an MIT-licensed, practical developer tool: FastAPI, vanilla JavaScript, Docker configuration, a composite GitHub Action, and five reproducible red-CI fixtures are all in the repository. It uses an open-weight Gemma 4 model as the preferred reasoning engine while retaining a local deterministic rules path for key-free, reproducible operation. The Action consumes failed workflow logs, emits a markdown report and job summary, and keeps all suggested commands reviewable rather than executing them. Developers can run the rules-backed app locally without a hosted service; adding a Gemini API key enables Gemma requests.
 
 ## Judging proof points
 - **Gemma 4 use:** text and image parts are sent together to the requested Gemma 4 model; structured JSON constrains the output to a diagnosis and non-destructive suggested commands.

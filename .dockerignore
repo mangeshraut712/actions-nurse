@@ -1,0 +1,17 @@
+# Never send local secrets into a Docker build context.
+.env
+.env.*
+!.env.example
+
+# Local runtime and repository metadata.
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Not used by the Dockerfile.
+.github/
+action/
+docs/
+scripts/

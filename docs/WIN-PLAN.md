@@ -4,7 +4,7 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 
 ## Prize criteria (MLH)
 1. **Best Use of Gemma 4**: multimodal (text+images), focused AI tool, rapid Gemini API prototype.
-2. **Best Open-Source AI Project**: open-weight AI is core; MIT; original.
+2. **Best Open-Source AI**: open-weight AI is core; MIT; original.
 
 ## Must-ship before submit
 - [x] Gemma 4 log triage via Gemini API + rules fallback (12s hard budget)
@@ -33,3 +33,10 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - Full evidence: [`CROSSCHECK.md`](CROSSCHECK.md)
 - Public quick tunnel reached local health successfully, but is intentionally not used as a permanent submission link.
 - Docker client is installed; build verification is blocked because the local Docker daemon is not running. Do not claim a successful image build.
+
+## Deep pass (2026-10-25 ~4:21 PM IST)
+- Image-aware comparison route and UI provenance are implemented; text fixture selection clears the prior screenshot attachment.
+- Public quick tunnel rechecked: app page, health endpoint, screenshot asset, and image-aware comparison all responded successfully. Current instance is forced to rules-only mode.
+- `docker compose build` rechecked; Compose plugin is unavailable, and the Docker daemon is not reachable. See [`CROSSCHECK.md`](CROSSCHECK.md).
+- Browser interaction confirmed screenshot-to-compare and fixture-switch behavior; header status badge sizing was corrected.
+- Replaced the dark blue app surface with a warm light Hacktoberfest palette and verified it in the browser.

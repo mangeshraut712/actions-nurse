@@ -265,19 +265,21 @@ async def triage_image(
     log: str = Form(""),
     image: UploadFile = File(...),
     model: str = Form(DEFAULT_MODEL),
+    rules_only: bool = Form(False),
 ) -> TriageResult:
     raw = await image.read(MAX_IMAGE_BYTES + 1)
     if len(raw) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="image must be 5 MB or smaller")
     if not raw:
         raise HTTPException(status_code=422, detail="image is empty")
-    result = None if RULES_ONLY else gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
+    use_rules = RULES_ONLY or rules_only
+    result = None if use_rules else gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
     if result:
         return result
     fallback = rule_triage(log or "screenshot uploaded without a usable Gemma response")
     fallback.summary = (
         "Rules-only mode is enabled; rules triage used the pasted log."
-        if RULES_ONLY
+        if use_rules
         else "Gemma was unavailable within 12 seconds; rules triage used the pasted log."
     )
     return fallback
@@ -294,6 +296,25 @@ def compare(req: TriageRequest) -> CompareResult:
     """Side-by-side rules vs Gemma — great for show-and-tell."""
     rules = rule_triage(req.log)
     gemma = None if (RULES_ONLY or req.rules_only) else gemma_triage(req.log, req.model)
+    return CompareResult(rules=rules, gemma=gemma)
+
+
+@app.post("/api/compare-image", response_model=CompareResult)
+async def compare_image(
+    log: str = Form(""),
+    image: UploadFile = File(...),
+    model: str = Form(DEFAULT_MODEL),
+    rules_only: bool = Form(False),
+) -> CompareResult:
+    """Compare the text rules baseline with Gemma using the same log and image."""
+    raw = await image.read(MAX_IMAGE_BYTES + 1)
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="image must be 5 MB or smaller")
+    if not raw:
+        raise HTTPException(status_code=422, detail="image is empty")
+    evidence = log or "Screenshot supplied; no text log was pasted."
+    rules = rule_triage(evidence)
+    gemma = None if (RULES_ONLY or rules_only) else gemma_triage(evidence, model, (image.content_type or "image/png", raw))
     return CompareResult(rules=rules, gemma=gemma)
 
 

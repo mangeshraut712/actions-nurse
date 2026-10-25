@@ -29,7 +29,7 @@ Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, o
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # optional: export GEMINI_API_KEY=...   # enables live Gemma 4
-uvicorn nurse:app --host 127.0.0.1 --port 8787
+NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
 # open http://127.0.0.1:8787
 ```
 
@@ -40,7 +40,7 @@ For the 20-second multimodal moment, click **Load red screenshot demo**. It atta
 Health: `GET /api/health`  
 Triage: `POST /api/triage` `{ "log": "..." }`  
 Compare: `POST /api/compare` `{ "log": "..." }` → `{ rules, gemma }`  
-Multimodal: `POST /api/triage-image` (multipart log + screenshot)
+Multimodal: `POST /api/triage-image` for one diagnosis, or `POST /api/compare-image` for the rules baseline from the log beside Gemma's diagnosis from the log + screenshot (multipart form)
 
 ```bash
 ./scripts/smoke.sh                     # always rules-only and fast
@@ -81,6 +81,8 @@ Or paste a log file:
 ```
 
 The checked-in [example workflow](.github/workflows/actions-nurse.yml) includes the required `actions: read` permission and uploads the generated markdown report. The Action writes that report and sets `summary` / `engine` outputs for job summaries.
+
+When copying the automatic workflow, change `workflows: ["CI"]` to the exact name of the workflow you want to watch. It runs only after that workflow completes with a failure, passes its run ID to Actions Nurse, and uploads the resulting report.
 
 ---
 
@@ -127,7 +129,7 @@ curl -s localhost:8787/api/fixtures
 
 - **Repo:** https://github.com/mangeshraut712/actions-nurse  
 - **License:** MIT  
-- **Demo:** local `uvicorn` or Docker; no hosted URL is claimed because an ephemeral tunnel would not be a reliable judge experience
+- **Demo:** [temporary Cloudflare quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) (ephemeral and forced to rules-only); use the local `uvicorn` instructions and `GEMINI_API_KEY` for a live Gemma 4 request
 - **Models:** Gemma 4 first; tries only compatible Gemma aliases within 12 seconds, then uses local rules
 - Full pitch: [`docs/MLH-SUBMISSION.md`](docs/MLH-SUBMISSION.md) · win checklist: [`docs/WIN-PLAN.md`](docs/WIN-PLAN.md)
 
