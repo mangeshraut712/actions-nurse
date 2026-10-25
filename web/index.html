@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Actions Nurse · Hack Day Pune</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Actions Nurse</h1>
+      <p class="tag">Gemma 4 triage for failed GitHub Actions · Hacktoberfest Hack Day Pune x Cloud Native Pune</p>
+    </div>
+    <span id="health" class="pill">…</span>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="row">
+        <label>Sample fixtures</label>
+        <div id="fixtures" class="chips"></div>
+      </div>
+      <label for="log">Failed CI log</label>
+      <textarea id="log" rows="14" placeholder="Paste a failed GitHub Actions log…"></textarea>
+      <div class="row actions">
+        <button id="triage" class="primary">Triage with Gemma 4</button>
+        <label class="file"><input type="file" id="image" accept="image/*" /> + CI screenshot</label>
+      </div>
+    </section>
+    <section class="panel result" id="result" hidden>
+      <h2>Triage</h2>
+      <p id="summary"></p>
+      <dl>
+        <dt>Failing step</dt><dd id="step"></dd>
+        <dt>Root cause</dt><dd id="cause"></dd>
+        <dt>Suggested fix</dt><dd id="fix"></dd>
+        <dt>Confidence</dt><dd id="conf"></dd>
+        <dt>Engine</dt><dd id="engine"></dd>
+      </dl>
+    </section>
+  </main>
+  <footer>Open-weight <strong>Gemma 4</strong> via Gemini API · rules fallback · MIT</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+Run npm run typecheck
+> actions-demo@0.1.0 typecheck
+> tsc --noEmit
+
+Error: src/features/leagues/BurnStreakMatrixCard.tsx(5,15): error TS2305: Module '"./types"' has no exported member 'ActiveBurnStreakSummary'.
+Error: src/features/leagues/RouteBurnSimulator.tsx(8,10): error TS2305: Module '"./scoring"' has no exported member 'estimateRouteBurn'.
+Error: Process completed with exit code 2.
