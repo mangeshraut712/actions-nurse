@@ -1,50 +1,47 @@
-# Actions Nurse — 2:30 Judge Demo
+# Judge demo · 2:30
 
-**Audience:** Hacktoberfest Hack Day Pune x Cloud Native Pune judges
-**Prize targets:** Best Use of Gemma 4 · Best Open-Source AI
+## Before presenting
 
-## Before the demo
+For the Gemma path, start a local server with `GEMINI_API_KEY` available and `NURSE_RULES_ONLY=false`. The public [Cloudflare quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) is temporary and currently forced to Rules-only mode. It is useful for the interface and key-free fallback, but it cannot demonstrate a live model call. Keep the key-backed server on loopback.
 
-For the live multimodal Gemma path, start locally with `GEMINI_API_KEY` configured and `NURSE_RULES_ONLY=false`:
+To reproduce locally after installing [`requirements.txt`](../requirements.txt):
 
 ```bash
-NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8788
+GEMINI_API_KEY=your-key NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
-Open `http://127.0.0.1:8788` for the key-enabled demo. The public quick tunnel on port 8787 is intentionally rules-only; keep the API key-backed server on loopback.
+Open `http://127.0.0.1:8787`. If no key is available, use the public Rules-only demo and say so directly.
 
-## 0:00–0:25 — Problem and pitch
+## 0:00–0:20 · Problem and evidence
 
-> “A red GitHub Actions run can hide the useful error in thousands of lines. Actions Nurse turns that failure into a structured diagnosis and a reviewable next step. Its key design is Gemma’s contextual proposal checked against deterministic log signatures.”
+**Show:** Actions Nurse’s light Hacktoberfest interface and its runtime status.
 
-## 0:25–1:20 — One-click multimodal path
+> “When a GitHub Actions run fails, a developer has to find the useful signal in the log. Actions Nurse turns that first look into a reviewable diagnosis. This local run has Gemma enabled; the public tunnel is Rules-only.”
 
-**Action:** Open `http://127.0.0.1:8788` and click **Run screenshot demo · 1 click**.
+## 0:20–0:55 · One-click screenshot fixture
 
-> “One click loads this red Actions screenshot and its matching sanitized `checkout-auth` log. Rules reads the log; Gemma receives the same log plus the screenshot. The UI shows the separate inputs and the live model proposal.”
+**Action:** Click **Run screenshot demo · 1 click**. It loads `checkout-auth.txt` and `red-actions-permission-failure.png`, then runs the comparison.
 
-**Action:** Point to the two cards and the Rules check banner.
+> “The app pairs one known permission failure log with its screenshot. In this Gemma-enabled run, Gemma sees both. The deterministic Rules baseline sees the log.”
 
-> “Gemma proposes the failure category and fix. Rules independently checks the known log signature. A match confirms the category; a conflict makes the deterministic diagnosis the final single result; no match stays visibly unverified. The comparison keeps both views on screen so you can judge the model’s contribution.”
+If the model is unavailable, use this line:
 
-> “The UI also shows exactly what Gemma received and which engine returned the diagnosis. Suggested commands can be copied, but Actions Nurse never runs them.”
+> “Gemma did not return within the request budget, so this run shows the Rules baseline. The interface labels the skipped proposal explicitly.”
 
-If the model is unavailable, say:
+## 0:55–1:30 · Compare the result
 
-> “This runtime skipped Gemma, so the screen shows the deterministic baseline. The public tunnel is deliberately rules-only; the multimodal Gemma call runs locally when a key is configured.”
+**Show:** The Rules baseline, Gemma card, input provenance, and category-check banner.
 
-## 1:20–1:55 — Gemma with a safety boundary
+> “Rules checks the failure category against known log signatures. A match confirms only that category; a mismatch selects Rules for single-result triage; and an unknown signature leaves Gemma’s proposal unverified. This check does not prove the full explanation or fix. Suggested commands are for review and are never run.”
 
-> “For a known failure, Gemma adds context to the same text and screenshot evidence, while deterministic Rules check the failure category. Unknown signatures stay unverified, and conflicting categories return the Rules diagnosis. Credential guidance follows least privilege; commands are never run. If Gemma is unavailable, the Rules path remains usable under a bounded 20-second model budget.”
+## 1:30–2:05 · GitHub Action
 
-## 1:55–2:30 — Open source and prize fit
+**Show:** [`actions-nurse.yml`](../.github/workflows/actions-nurse.yml) and the report artifact step.
 
-**Action:** Show `.github/workflows/actions-nurse.yml` and the report artifact setup.
+> “For automation, the composite Action listens for a failed workflow completion, reads failed job logs with Actions read permission, adds a Markdown report to the job summary, and uploads that report. The example also grants contents read. It does not retry the job or modify the repository.”
 
-> “The MIT-licensed repository includes five red-CI fixtures and a composite GitHub Action. On a failed workflow, it reads failed-step logs with scoped permissions, writes a job summary and Markdown report, and uploads the report. The Action also runs the deterministic category check; it never executes suggested commands.”
+## 2:05–2:30 · Close
 
-> “That is the Gemma 4 use case: multimodal CI triage with an explicit evidence check. The open-source contribution is a reproducible, key-free rules path plus an Action teams can adapt to their own failed workflows.”
+**Show:** The MIT license, five fixture names, and the repository’s CI workflow.
 
-> “The focus is the first response after CI fails: interpret the incident evidence and make the next step reviewable. The Action reports what it found; it does not retry jobs or change a repository.”
-
-> “Repo: `mangeshraut712/actions-nurse`. Thank you.”
+> “The model path uses open-weight Gemma 4 through the Gemini API; the repository does not bundle model weights. The deterministic Rules path is available without a key. CI checks the Action fixtures and builds and smoke-tests the container. That is Actions Nurse: a bounded, inspectable first response to failed CI.”

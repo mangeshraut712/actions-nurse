@@ -1,70 +1,35 @@
-# Win plan — Best Use of Gemma 4 + Best Open-Source AI
+# Submission readiness
 
-Deadline: Oct 25 2026 5:15 PM IST (extended). Freeze ready by 5:10 PM IST. Show-and-tell 2–3 min.
+Updated 25 October 2026. This file tracks the evidence and presentation for the two target categories; it does not record an award or confirm portal submission.
 
-## Prize criteria (MLH)
-1. **Best Use of Gemma 4**: multimodal (text+images), focused AI tool, rapid Gemini API prototype.
-2. **Best Open-Source AI**: open-weight AI is core; MIT; original.
+## Prize mapping
 
-## Must-ship before submit
-- [x] Gemma 4 log triage via Gemini API + rules fallback (20s bounded model budget)
-- [x] Screenshot multimodal endpoint (`POST /api/triage-image`)
-- [x] GitHub Action on failed workflow_run (`.github/workflows/actions-nurse.yml` + `action/`)
-- [x] Compare endpoint + UI: rules vs Gemma side-by-side
-- [x] Dockerfile + docker-compose
-- [x] Judge-first README + MLH-SUBMISSION.md + demo-script.md
-- [x] Fixtures: typecheck, pytest, OOM, npm/disk/ENOSPC, checkout-auth
-- [x] Public demo tunnel smoke-tested — temporary Cloudflare quick tunnel; local demo remains the durable judge path
-- [x] Screenshot fixture image under `docs/fixtures-img/` for multimodal live demo
-- [ ] MLH submit both categories (~5:15 PM IST)
+| Category | Lead with | Proof |
+|---|---|---|
+| Best Use of Gemma 4 | One-click CI log + screenshot input, Gemma proposal through the Gemini API, and an explicit deterministic category check. | [`/api/compare-image`](../nurse.py), [screenshot demo UI](../web/app.js), [paste-ready copy](MLH-SUBMISSION.md#best-use-of-gemma-4) |
+| Best Open-Source AI | MIT license, composite Action and report artifact workflow, five reproducible fixtures, and key-free Rules fallback. | [MIT license](../LICENSE), [Action](../action/action.yml), [automation workflow](../.github/workflows/actions-nurse.yml), [fixtures](../fixtures), [paste-ready copy](MLH-SUBMISSION.md#best-open-source-ai) |
 
-## Demo story (2–3 min)
-1. **Run screenshot demo · 1 click** → attach the bundled red screenshot and matching `checkout-auth` log, then open the compare view
-2. Gemma proposes from text + image; deterministic rules check the reported failure category, confirm a known category, override a conflict, or mark an unknown proposal unverified
-3. Show the Rules baseline, Gemma input provenance, and transparent skipped-model state when running the public rules-only demo
-4. Show the composite Action + report artifact as the cloud-native OSS path
+## Judge path
 
-## Judge positioning note
+1. Use the local Gemma-enabled server for the one-click `checkout-auth` screenshot + log comparison. Explain that Gemma sees both inputs and Rules sees the text log.
+2. Read the outcome precisely: a known category match confirms the category only; a conflict selects Rules for the single-result route; an unknown signature leaves the proposal unverified.
+3. Show the failed-run composite Action, read-only permissions, Markdown report, and artifact upload.
+4. Close with the MIT license, five fixtures, key-free Rules mode, and the green CI evidence.
 
-The Temporal/Gemma example [Quorum](https://dev.to/arqamwd/we-should-go-out-this-weekend-i-built-a-discord-member-that-holds-the-clock-until-were-outside-10ek) leads with durable group planning: votes, scheduled checks, retries, and restart recovery. Actions Nurse solves a different, immediate problem: after CI fails, turn a log and screenshot into a diagnosis a developer can inspect. Lead with the one-click multimodal evidence, the independent Rules category check, and the key-free fallback. Do not imply that Actions Nurse provides Temporal-style orchestration or durable retries.
+The [public quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) is **ephemeral and Rules-only**. Its health check reports model calls disabled. It can show the interface and fallback, but it cannot serve as proof of live Gemma inference. Keep the key-backed demonstration on loopback.
 
-## Final readiness checkpoint — 2026-10-25 17:00 IST
+## Verified evidence and limits
 
-- Implementation commit `fc13337` is pushed; [CI run 40189058584](https://github.com/mangeshraut712/actions-nurse/actions/runs/40189058584) passed the Docker build and full workflow smoke.
-- Local `NURSE_RULES_ONLY=true ./scripts/smoke.sh`, all five Action fixtures, the public rules-only UI, and the local multimodal Gemma UI passed.
-- The public tunnel does not expose Gemma availability; the key-backed path stays on loopback.
-- Freeze target remains 5:10 PM IST; submit both checked categories by 5:15 PM IST.
+- Latest pre-documentation [CI run](https://github.com/mangeshraut712/actions-nurse/actions/runs/40189125542) passed on source commit `5e9236c`; it includes compile/syntax checks, seven validator tests, all five Action CLI fixtures, Docker Compose build, container health, screenshot route, and HTTP smoke.
+- The local Docker client on the documentation workstation does not provide `docker compose`; no local image build is claimed. The remote CI build is the Docker proof.
+- A previous local Gemma-enabled multimodal pass used the bundled screenshot and checkout-auth fixture and returned a category-confirmed result. The current public tunnel remains Rules-only; see [the verification record](CROSSCHECK.md) for timestamps and this pass’s checks.
+- The category validator checks the reported failure step against known deterministic signatures. It does not establish that all model prose is correct.
 
-**Live Gemma endpoint for judges:** `http://127.0.0.1:8788` with `GEMINI_API_KEY` configured. The public tunnel at `https://mini-deleted-wed-week.trycloudflare.com` remains rules-only on port 8787.
+## Submission materials
 
-## Crosscheck (2026-10-25 ~3:55 PM IST)
-- Repo cwd: `/Users/mangeshraut/codex-work/actions-nurse` only
-- Latest pushed: see `git log -1`
-- Rules path verified for all fixtures + HTTP triage/compare without API key
+- [README and quickstart](../README.md)
+- [Paste-ready entries for both prize categories](MLH-SUBMISSION.md)
+- [Timed 2:30 demo script](demo-script.md)
+- [Current verification record](CROSSCHECK.md)
 
-## Crosscheck (2026-10-25 ~4:05 PM IST)
-- Full evidence: [`CROSSCHECK.md`](CROSSCHECK.md)
-- Public quick tunnel reached local health successfully, but is intentionally not used as a permanent submission link.
-- Docker client is installed; build verification is blocked because the local Docker daemon is not running. Do not claim a successful image build.
-
-## Deep pass (2026-10-25 ~4:21 PM IST)
-- Image-aware comparison route and UI provenance are implemented; text fixture selection clears the prior screenshot attachment.
-- Public quick tunnel rechecked: app page, health endpoint, screenshot asset, and image-aware comparison all responded successfully. Current instance is forced to rules-only mode.
-- `docker compose build` rechecked; Compose plugin is unavailable, and the Docker daemon is not reachable. See [`CROSSCHECK.md`](CROSSCHECK.md).
-- Browser interaction confirmed screenshot-to-compare and fixture-switch behavior; header status badge sizing was corrected.
-- Replaced the dark blue app surface with a warm light Hacktoberfest palette and verified it in the browser.
-
-## Judge polish follow-up (2026-10-25 ~4:30 PM IST)
-- Added Gemma failure-category checking to the web triage, compare routes, and Action CLI. Known conflicts select the deterministic diagnosis; unknown signatures remain explicitly unverified.
-- Reworked the compare hero to explain evidence → proposal → rules check, with dynamic copy for forced rules-only mode.
-- **Run screenshot demo · 1 click** now loads the screenshot + `checkout-auth` fixture and executes the multimodal comparison in one action.
-- Tightened README prize mapping, both paste-ready MLH entries, and the timed demo script. The public tunnel is still temporary and rules-only; no live Gemma call was claimed.
-- Verification: `NURSE_RULES_ONLY=true ./scripts/smoke.sh` passed; all five Action fixtures and mocked category-check scenarios passed; compile, JavaScript syntax, and diff whitespace checks passed. See [`CROSSCHECK.md`](CROSSCHECK.md).
-- `docker compose build` remains blocked because this host has no `docker compose` subcommand; no image was produced.
-
-## SDLC readiness pass (2026-10-25 ~4:45 PM IST)
-- **Gemma end-to-end works:** loopback-only port 8788 returned a multimodal `gemma-4-26b-a4b-it` diagnosis from the bundled screenshot + auth fixture; the Rules validator confirmed the checkout category. The compare UI also displayed this live result. Public port 8787 stays rules-only.
-- **Parser hardened:** Gemma can return thought parts and a JSON array. The app and Action CLI now use the final non-thought result, and a regression test covers that format. The default model attempt budget is 20 seconds to avoid needless fallback on variable provider latency.
-- **CI passed remotely on `be8823c`:** [Run 40188367576](https://github.com/mangeshraut712/actions-nurse/actions/runs/40188367576) built the Compose image and passed container health, screenshot asset, HTTP smoke, Python/JavaScript checks, unit tests, and all five Action fixtures using Node 24 action majors. Its only annotation was the moving `ubuntu-latest` image notice; the release gate now pins `ubuntu-24.04`.
-- **Packaging/security fixes:** Docker context retains the screenshot required at runtime; Compose binds only to localhost and accepts `NURSE_RULES_ONLY`; the Action avoids shell interpolation of its path inputs; prompts treat log/image content as untrusted.
-- **Local verification:** rules smoke `SMOKE_OK`, five unit tests passed, five Action fixtures passed, YAML parsing, Python compile, `node --check`, `bash -n`, and `git diff --check` passed. Local Docker build remains blocked by the missing Compose plugin; remote CI built and smoke-tested the image successfully.
+No additional feature is needed to explain the current entry. Keep the presentation focused on the multimodal comparison, its narrow validation claim, and the reusable open-source Action.
