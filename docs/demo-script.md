@@ -8,10 +8,10 @@
 For the live multimodal Gemma path, start locally with `GEMINI_API_KEY` configured and `NURSE_RULES_ONLY=false`:
 
 ```bash
-NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
+NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8788
 ```
 
-The public quick tunnel is intentionally rules-only. Use it to show the UI and reproducible baseline; do not claim it ran Gemma.
+Open `http://127.0.0.1:8788` for the key-enabled demo. The public quick tunnel on port 8787 is intentionally rules-only; keep the API key-backed server on loopback.
 
 ## 0:00–0:25 — Problem and pitch
 
@@ -19,7 +19,7 @@ The public quick tunnel is intentionally rules-only. Use it to show the UI and r
 
 ## 0:25–1:20 — One-click multimodal path
 
-**Action:** Open `http://127.0.0.1:8787` and click **Run screenshot demo · 1 click**.
+**Action:** Open `http://127.0.0.1:8788` and click **Run screenshot demo · 1 click**.
 
 > “One click loads this red Actions screenshot and its matching sanitized `checkout-auth` log, then runs the comparison. The Rules baseline reads the log. Gemma receives the same log plus the screenshot as image input.”
 
@@ -35,7 +35,7 @@ If the model is unavailable, say:
 
 ## 1:20–1:55 — Gemma with a safety boundary
 
-> “For a known failure, Gemma adds context to the same text and screenshot evidence, while the deterministic check limits which category can be accepted as the final single-result diagnosis. For an unfamiliar failure, it does not pretend the rules verified the model; it labels the proposal unverified. If the key, network, or model response is unavailable, the rules path remains usable under a bounded 12-second model budget.”
+> “For a known failure, Gemma adds context to the same text and screenshot evidence, while the deterministic check limits which category can be accepted as the final single-result diagnosis. For an unfamiliar failure, it does not pretend the rules verified the model; it labels the proposal unverified. If the key, network, or model response is unavailable, the rules path remains usable under a bounded 20-second model budget.”
 
 ## 1:55–2:30 — Open source and prize fit
 

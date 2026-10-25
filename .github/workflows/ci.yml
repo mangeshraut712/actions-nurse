@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NURSE_RULES_ONLY: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install app dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check Python, Action CLI, and browser JavaScript
+        run: |
+          python -m compileall -q nurse.py action/nurse_cli.py tests
+          node --check web/app.js
+      - name: Test validator and Action fixtures
+        run: |
+          python -m unittest discover -s tests -v
+          for fixture in fixtures/*.txt; do
+            NURSE_LOG_PATH="$fixture" NURSE_OUTPUT=/tmp/nurse-report.md python action/nurse_cli.py
+          done
+      - name: Build and smoke-test the Docker Compose deployment
+        run: |
+          trap 'docker compose down --volumes --remove-orphans || true' EXIT
+          docker compose config --quiet
+          docker compose up -d --build
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/api/health
+          curl -fsS http://127.0.0.1:8787/demo-assets/red-actions-permission-failure.png >/dev/null
+          ./scripts/smoke.sh

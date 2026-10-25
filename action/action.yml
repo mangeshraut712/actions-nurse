@@ -52,12 +52,13 @@ runs:
         NURSE_MODEL: ${{ inputs.model }}
         NURSE_OUTPUT: ${{ inputs.report-path }}
         NURSE_RULES_ONLY: ${{ inputs.rules-only }}
+        ACTION_PATH: ${{ github.action_path }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
         set -euo pipefail
-        python3 "${{ github.action_path }}/nurse_cli.py"
-        if [[ -f "${{ inputs.report-path }}" ]]; then
+        python3 "$ACTION_PATH/nurse_cli.py"
+        if [[ -f "$NURSE_OUTPUT" ]]; then
           echo "## 🩺 Actions Nurse" >> "$GITHUB_STEP_SUMMARY"
-          cat "${{ inputs.report-path }}" >> "$GITHUB_STEP_SUMMARY"
+          cat "$NURSE_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
         fi

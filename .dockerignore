@@ -10,8 +10,10 @@ venv/
 __pycache__/
 *.py[cod]
 
-# Not used by the Dockerfile.
+# Keep the runtime screenshot fixture; other documentation is not part of the image.
 .github/
 action/
-docs/
+docs/*.md
+docs/fixtures-img/*
+!docs/fixtures-img/red-actions-permission-failure.png
 scripts/

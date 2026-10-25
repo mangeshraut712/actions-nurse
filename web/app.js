@@ -112,14 +112,14 @@ async function boot() {
     const res = await fetch('/api/health');
     const health = await res.json();
     runtimeHealth = health;
-    healthEl.textContent = health.rules_only ? 'Rules-only demo' : (health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key');
+    healthEl.textContent = health.rules_only ? 'Rules-only demo' : (health.gemma_key ? `Gemma-first · ${health.gemma_budget_seconds}s fallback` : 'Rules ready · no key');
     healthEl.className = 'pill ok';
     if (health.rules_only) {
       runtimeHint.textContent = 'Rules-only mode is active. No Gemma request is made; deterministic rules diagnose from the log. Commands are suggestions only — review before running.';
     } else if (!health.gemma_key) {
       runtimeHint.textContent = 'No Gemini API key is configured. Rules diagnose logs; add a key to try Gemma 4, then rules check known failure categories. Commands are suggestions only — review before running.';
     } else {
-      runtimeHint.textContent = 'Gemma 4 proposes first within a 12-second budget. Deterministic rules check known failure categories and override conflicts. Commands are suggestions only — review before running.';
+      runtimeHint.textContent = 'Gemma 4 proposes first within a 20-second budget. Deterministic rules check known failure categories and override conflicts. Commands are suggestions only — review before running.';
     }
   } catch (err) {
     healthEl.textContent = 'API offline';
@@ -227,7 +227,7 @@ async function boot() {
     } else if (!runtimeHealth?.gemma_key) {
       setStatus(`No Gemini API key is configured. The rules fallback will diagnose the ${evidenceLabel}.`);
     } else {
-      setStatus(`Trying Gemma 4 with the ${evidenceLabel}; rules fallback is available within 12 seconds.`);
+      setStatus(`Trying Gemma 4 with the ${evidenceLabel}; rules fallback is available within 20 seconds.`);
     }
     clearResults();
     try {
@@ -317,7 +317,7 @@ async function boot() {
         ? 'Rules-only mode is enabled, so Gemma was skipped. The deterministic baseline is shown.'
         : !runtimeHealth?.gemma_key
           ? 'No Gemini API key is configured, so Gemma was skipped. The deterministic baseline is shown.'
-          : 'Gemma did not return a result. Check model availability, network, and the 12-second budget; rules still work.';
+          : 'Gemma did not return a result. Check model availability, network, and the 20-second budget; rules still work.';
       document.getElementById('gemmaSummary').textContent = g?.summary || gemmaUnavailable;
       document.getElementById('gemmaStep').textContent = g?.failing_step || '—';
       document.getElementById('gemmaCause').textContent = g?.root_cause || '—';
@@ -367,7 +367,7 @@ async function boot() {
           ? 'Rules baseline ready. The runtime is forced to rules-only mode, so no Gemma request was made.'
           : !runtimeHealth?.gemma_key
             ? 'Rules baseline ready. No Gemini API key is configured, so no Gemma request was made.'
-            : 'Rules baseline ready. Gemma returned no result; check model availability, network, and the 12-second budget.');
+            : 'Rules baseline ready. Gemma returned no result; check model availability, network, and the 20-second budget.');
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);

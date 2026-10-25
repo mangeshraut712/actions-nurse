@@ -2,8 +2,9 @@ services:
   nurse:
     build: .
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      NURSE_RULES_ONLY: ${NURSE_RULES_ONLY:-false}
     volumes:
       - ./fixtures:/app/fixtures:ro

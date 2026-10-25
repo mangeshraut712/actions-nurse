@@ -4,7 +4,7 @@
 Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/events/hacktoberfest-hack-day-pune-x-cloud-native-pune)
 
 > Paste a red CI log (or load the included red screenshot demo) → get failing step, root cause, suggested fix, and copy-paste shell commands.
-> Gemma-first: **Gemma 4** gets a bounded **12-second** attempt; deterministic rules check known failure categories and keep a key-free diagnosis available.
+> Gemma-first: **Gemma 4** gets a bounded **20-second** attempt; deterministic rules check known failure categories and keep a key-free diagnosis available.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Gemma%204-multimodal-purple)](#)
@@ -16,7 +16,7 @@ Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/
 
 | Prize | How Actions Nurse fits |
 | --- | --- |
-| **Best Use of Gemma 4** | One click loads the `checkout-auth` log + bundled red Actions screenshot and runs `/api/compare-image`; Gemma proposes a structured diagnosis, deterministic rules check known signatures, and the UI exposes both inputs and provenance under a 12-second budget |
+| **Best Use of Gemma 4** | One click loads the `checkout-auth` log + bundled red Actions screenshot and runs `/api/compare-image`; Gemma proposes a structured diagnosis, deterministic rules check known signatures, and the UI exposes both inputs and provenance under a bounded 20-second model attempt |
 | **Best Open-Source AI** | MIT-licensed FastAPI + vanilla JS, five reproducible red-CI fixtures, a composite GitHub Action with scoped workflow permissions and a report artifact, and a key-free deterministic path for reproducible local use |
 
 Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, or as a tiny FastAPI service / Docker container for local demos.
@@ -29,8 +29,8 @@ Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, o
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # optional: export GEMINI_API_KEY=...   # enables live Gemma 4
-NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
-# open http://127.0.0.1:8787
+NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8788
+# open http://127.0.0.1:8788 (local Gemma path; keep the key-backed server on loopback)
 ```
 
 For the one-click multimodal moment, press **Run screenshot demo · 1 click**. It attaches the bundled failing Actions screenshot, loads its matching `checkout-auth` log, and opens the side-by-side comparison. With a key and `NURSE_RULES_ONLY=false`, Gemma receives both inputs; deterministic rules check the proposal against known log signatures. A mismatch falls back to the rules diagnosis, and an unknown signature stays labeled as unverified. Without a key—or on the public demo—the rules baseline remains available and the UI says Gemma was skipped.
@@ -93,6 +93,8 @@ docker compose up --build
 # http://localhost:8787
 ```
 
+Compose binds to loopback. Set `GEMINI_API_KEY` to enable Gemma, or set `NURSE_RULES_ONLY=true` for an explicitly offline run.
+
 ---
 
 ## Architecture
@@ -132,7 +134,7 @@ curl -s localhost:8787/api/fixtures
 - **Repo:** https://github.com/mangeshraut712/actions-nurse  
 - **License:** MIT  
 - **Public demo:** [temporary Cloudflare quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) (ephemeral and forced to rules-only; live Gemma is not enabled publicly)
-- **Gemma demo:** run locally with `GEMINI_API_KEY` and `NURSE_RULES_ONLY=false`; Gemma receives the screenshot + log, then known signatures are checked deterministically
+- **Gemma demo:** run `NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8788` locally with `GEMINI_API_KEY`; Gemma receives the screenshot + log, then known signatures are checked deterministically
 - Full pitch: [`docs/MLH-SUBMISSION.md`](docs/MLH-SUBMISSION.md) · win checklist: [`docs/WIN-PLAN.md`](docs/WIN-PLAN.md)
 
 ---

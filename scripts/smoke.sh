@@ -2,6 +2,10 @@
 set -euo pipefail
 BASE="${1:-http://127.0.0.1:8787}"
 RULES_ONLY=true
+echo "== Gemma category validator unit tests =="
+TEST_PYTHON="${PYTHON:-python3}"
+if [[ -x .venv/bin/python && -z "${PYTHON:-}" ]]; then TEST_PYTHON=".venv/bin/python"; fi
+"$TEST_PYTHON" -m unittest discover -s tests -v
 echo "== health =="
 curl -fsS "$BASE/api/health" | python3 -m json.tool
 echo "== rules-only typecheck =="

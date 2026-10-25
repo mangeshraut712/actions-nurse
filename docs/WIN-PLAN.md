@@ -7,7 +7,7 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 2. **Best Open-Source AI**: open-weight AI is core; MIT; original.
 
 ## Must-ship before submit
-- [x] Gemma 4 log triage via Gemini API + rules fallback (12s hard budget)
+- [x] Gemma 4 log triage via Gemini API + rules fallback (20s bounded model budget)
 - [x] Screenshot multimodal endpoint (`POST /api/triage-image`)
 - [x] GitHub Action on failed workflow_run (`.github/workflows/actions-nurse.yml` + `action/`)
 - [x] Compare endpoint + UI: rules vs Gemma side-by-side
@@ -23,6 +23,8 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 2. Gemma proposes from text + image; deterministic rules check the reported failure category, confirm a known category, override a conflict, or mark an unknown proposal unverified
 3. Show the Rules baseline, Gemma input provenance, and transparent skipped-model state when running the public rules-only demo
 4. Show the composite Action + report artifact as the cloud-native OSS path
+
+**Live Gemma endpoint for judges:** `http://127.0.0.1:8788` with `GEMINI_API_KEY` configured. The public tunnel at `https://mini-deleted-wed-week.trycloudflare.com` remains rules-only on port 8787.
 
 ## Crosscheck (2026-10-25 ~3:55 PM IST)
 - Repo cwd: `/Users/mangeshraut/codex-work/actions-nurse` only
@@ -48,3 +50,10 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - Tightened README prize mapping, both paste-ready MLH entries, and the timed demo script. The public tunnel is still temporary and rules-only; no live Gemma call was claimed.
 - Verification: `NURSE_RULES_ONLY=true ./scripts/smoke.sh` passed; all five Action fixtures and mocked category-check scenarios passed; compile, JavaScript syntax, and diff whitespace checks passed. See [`CROSSCHECK.md`](CROSSCHECK.md).
 - `docker compose build` remains blocked because this host has no `docker compose` subcommand; no image was produced.
+
+## SDLC readiness pass (2026-10-25 ~4:45 PM IST)
+- **Gemma end-to-end works:** loopback-only port 8788 returned a multimodal `gemma-4-26b-a4b-it` diagnosis from the bundled screenshot + auth fixture; the Rules validator confirmed the checkout category. The compare UI also displayed this live result. Public port 8787 stays rules-only.
+- **Parser hardened:** Gemma can return thought parts and a JSON array. The app and Action CLI now use the final non-thought result, and a regression test covers that format. The default model attempt budget is 20 seconds to avoid needless fallback on variable provider latency.
+- **CI added:** `.github/workflows/ci.yml` runs unit tests, Python/JavaScript checks, all five Action fixtures, and Docker Compose build + container smoke. Its workflow name now matches the failure-triggered nurse workflow.
+- **Packaging/security fixes:** Docker context retains the screenshot required at runtime; Compose binds only to localhost and accepts `NURSE_RULES_ONLY`; the Action avoids shell interpolation of its path inputs; prompts treat log/image content as untrusted.
+- **Local verification:** rules smoke `SMOKE_OK`, five unit tests passed, five Action fixtures passed, YAML parsing, Python compile, `node --check`, `bash -n`, and `git diff --check` passed. Local Docker build remains blocked by the missing Compose plugin; remote CI build is pending.

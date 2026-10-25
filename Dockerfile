@@ -4,6 +4,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY nurse.py .
 COPY fixtures ./fixtures
+COPY docs/fixtures-img/red-actions-permission-failure.png ./docs/fixtures-img/
 COPY web ./web
 ENV PORT=8787
 EXPOSE 8787
