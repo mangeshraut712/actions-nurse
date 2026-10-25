@@ -123,25 +123,30 @@ def gemma_triage(log: str, model: str) -> Optional[TriageResult]:
         "You are Actions Nurse. Reply ONLY JSON with keys summary, failing_step, "
         "root_cause, suggested_fix, confidence (high|medium|low).\n\nLOG:\n" + log[:12000]
     )
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    try:
-        r = httpx.post(url, params={"key": key}, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=60)
-        r.raise_for_status()
-        text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-        m = re.search(r"\{[\s\S]*\}", text)
-        if not m:
-            return None
-        data = json.loads(m.group(0))
-        return TriageResult(
-            summary=str(data.get("summary", "Gemma triage complete."))[:500],
-            failing_step=str(data.get("failing_step", "Unknown"))[:200],
-            root_cause=str(data.get("root_cause", ""))[:800],
-            suggested_fix=str(data.get("suggested_fix", ""))[:800],
-            confidence=str(data.get("confidence", "medium"))[:20],
-            engine="gemma",
-        )
-    except Exception:
-        return None
+    models_to_try = [model]
+    if "gemma-4" in model:
+        models_to_try.extend(["gemma-2-27b-it", "gemma-2-9b-it", "gemini-1.5-flash"])
+
+    for m_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
+        try:
+            r = httpx.post(url, params={"key": key}, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=45)
+            if r.status_code == 200:
+                text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                m = re.search(r"\{[\s\S]*\}", text)
+                if m:
+                    data = json.loads(m.group(0))
+                    return TriageResult(
+                        summary=str(data.get("summary", "Gemma triage complete."))[:500],
+                        failing_step=str(data.get("failing_step", "Unknown"))[:200],
+                        root_cause=str(data.get("root_cause", ""))[:800],
+                        suggested_fix=str(data.get("suggested_fix", ""))[:800],
+                        confidence=str(data.get("confidence", "medium"))[:20],
+                        engine="gemma",
+                    )
+        except Exception:
+            continue
+    return None
 
 
 @app.get("/")
@@ -199,32 +204,37 @@ async def triage_image(
     )
     if log.strip():
         prompt += "\n\nLog:\n" + log[:4000]
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    body = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {"inline_data": {"mime_type": mime, "data": b64}},
-            ]
-        }]
-    }
-    try:
-        r = httpx.post(url, params={"key": key}, json=body, timeout=90)
-        r.raise_for_status()
-        text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-        m = re.search(r"\{[\s\S]*\}", text)
-        if m:
-            data = json.loads(m.group(0))
-            return TriageResult(
-                summary=str(data.get("summary", "Screenshot reviewed."))[:500],
-                failing_step=str(data.get("failing_step", "CI"))[:200],
-                root_cause=str(data.get("root_cause", ""))[:800],
-                suggested_fix=str(data.get("suggested_fix", ""))[:800],
-                confidence=str(data.get("confidence", "medium"))[:20],
-                engine="gemma",
-            )
-    except Exception:
-        pass
+    models_to_try = [model]
+    if "gemma-4" in model:
+        models_to_try.extend(["gemini-1.5-flash", "gemini-1.5-pro"])
+
+    for m_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
+        body = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                ]
+            }]
+        }
+        try:
+            r = httpx.post(url, params={"key": key}, json=body, timeout=60)
+            if r.status_code == 200:
+                text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                m = re.search(r"\{[\s\S]*\}", text)
+                if m:
+                    data = json.loads(m.group(0))
+                    return TriageResult(
+                        summary=str(data.get("summary", "Screenshot reviewed."))[:500],
+                        failing_step=str(data.get("failing_step", "CI"))[:200],
+                        root_cause=str(data.get("root_cause", ""))[:800],
+                        suggested_fix=str(data.get("suggested_fix", ""))[:800],
+                        confidence=str(data.get("confidence", "medium"))[:20],
+                        engine="gemma",
+                    )
+        except Exception:
+            continue
     return rule_triage(log or "image triage failed; falling back")
 
 

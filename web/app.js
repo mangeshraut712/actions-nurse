@@ -80,6 +80,26 @@ async function boot() {
     });
   }
 
+  // Quick copy on suggested fix
+  const fixEl = document.getElementById('fix');
+  if (fixEl) {
+    fixEl.style.cursor = 'pointer';
+    fixEl.title = 'Click to copy suggested fix';
+    fixEl.addEventListener('click', async () => {
+      const text = fixEl.textContent;
+      if (text && text.trim()) {
+        try {
+          await navigator.clipboard.writeText(text.trim());
+          const orig = fixEl.textContent;
+          fixEl.textContent = '✓ Copied fix to clipboard!';
+          setTimeout(() => {
+            fixEl.textContent = orig;
+          }, 1400);
+        } catch (_) {}
+      }
+    });
+  }
+
   // 4. Triage action
   triageBtn.addEventListener('click', async () => {
     const log = logEl.value.trim();
