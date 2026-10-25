@@ -12,6 +12,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures"
 

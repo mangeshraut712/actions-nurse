@@ -17,3 +17,16 @@ button.primary{background:linear-gradient(135deg,#34d399,#60a5fa);color:#041018;
 dl{display:grid;grid-template-columns:8rem 1fr;gap:.55rem .75rem;margin:0}
 dt{color:var(--muted)} dd{margin:0}
 footer{color:var(--muted);font-size:.85rem;padding-bottom:2rem}
+
+.chips button:hover { border-color: var(--accent2); }
+.chips button.active { border-color: var(--accent); background: #1f3b3a; color: var(--accent); }
+#fix { color: #86efac; background: rgba(52, 211, 153, 0.1); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.25); }
+#cause { color: #fca5a5; }
+#step { font-family: ui-monospace, Menlo, monospace; color: #93c5fd; }
+.badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+.badge-gemma { background: #1e3a5f; color: #60a5fa; border: 1px solid #3b82f6; }
+.badge-rules { background: #3b2d18; color: #fbbf24; border: 1px solid #d97706; }
+.badge-high { color: #34d399; }
+.badge-medium { color: #fbbf24; }
+.badge-low { color: #f87171; }
+.file-selected { color: var(--accent); margin-left: 0.4rem; font-size: 0.8rem; }
