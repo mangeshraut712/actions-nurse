@@ -30,3 +30,25 @@ footer{color:var(--muted);font-size:.85rem;padding-bottom:2rem}
 .badge-medium { color: #fbbf24; }
 .badge-low { color: #f87171; }
 .file-selected { color: var(--accent); margin-left: 0.4rem; font-size: 0.8rem; }
+
+.badges { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.55rem; }
+.chip-badge {
+  font-size:0.72rem; font-weight:600; letter-spacing:0.02em;
+  padding:0.2rem 0.55rem; border-radius:999px;
+  background:rgba(124,58,237,.14); color:#c4b5fd; border:1px solid rgba(167,139,250,.35);
+}
+button.secondary {
+  background:transparent; color:var(--text,#e5e7eb);
+  border:1px solid rgba(148,163,184,.45);
+}
+button.secondary:hover { border-color:#a78bfa; color:#ddd6fe; }
+.hint { color:var(--muted,#94a3b8); font-size:0.85rem; margin:0.75rem 0 0; }
+.compare-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+}
+@media (max-width:800px){ .compare-grid{ grid-template-columns:1fr; } }
+.compare article {
+  background:rgba(15,23,42,.55); border:1px solid rgba(148,163,184,.2);
+  border-radius:12px; padding:1rem;
+}
+.compare h3 { margin:0 0 0.5rem; font-size:1rem; }

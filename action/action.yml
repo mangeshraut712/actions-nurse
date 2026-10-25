@@ -1,0 +1,58 @@
+name: 'Actions Nurse'
+description: 'Triage failed GitHub Actions with open-weight Gemma 4 (offline rules fallback)'
+author: 'Mangesh Raut'
+branding:
+  icon: 'activity'
+  color: 'purple'
+inputs:
+  log-path:
+    description: 'Path to a failed job log file'
+    required: false
+    default: ''
+  workflow-run-id:
+    description: 'Failed workflow_run id (Action will fetch job logs via gh)'
+    required: false
+    default: ''
+  gemini-api-key:
+    description: 'Gemini API key for Gemma 4 (optional — rules still work)'
+    required: false
+    default: ''
+  model:
+    description: 'Gemma / Gemini model id'
+    required: false
+    default: 'gemma-4-26b-a4b-it'
+  report-path:
+    description: 'Where to write the markdown report'
+    required: false
+    default: 'nurse-report.md'
+outputs:
+  summary:
+    description: 'One-line triage summary'
+    value: ${{ steps.nurse.outputs.summary }}
+  engine:
+    description: 'gemma or rules'
+    value: ${{ steps.nurse.outputs.engine }}
+  report_path:
+    description: 'Path to markdown report'
+    value: ${{ steps.nurse.outputs.report_path }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Actions Nurse
+      id: nurse
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        NURSE_LOG_PATH: ${{ inputs.log-path }}
+        NURSE_WORKFLOW_RUN_ID: ${{ inputs.workflow-run-id }}
+        NURSE_MODEL: ${{ inputs.model }}
+        NURSE_OUTPUT: ${{ inputs.report-path }}
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        python3 "${{ github.action_path }}/nurse_cli.py"
+        if [[ -f "${{ inputs.report-path }}" ]]; then
+          echo "## 🩺 Actions Nurse" >> "$GITHUB_STEP_SUMMARY"
+          cat "${{ inputs.report-path }}" >> "$GITHUB_STEP_SUMMARY"
+        fi

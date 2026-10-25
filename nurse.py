@@ -38,6 +38,8 @@ class TriageResult(BaseModel):
     confidence: str
     engine: str
     patterns: list[str] = []
+    fix_commands: list[str] = []
+    model: str = ""
 
 
 RULES: list[tuple[str, dict[str, str]]] = [
@@ -121,11 +123,12 @@ def gemma_triage(log: str, model: str) -> Optional[TriageResult]:
         return None
     prompt = (
         "You are Actions Nurse. Reply ONLY JSON with keys summary, failing_step, "
-        "root_cause, suggested_fix, confidence (high|medium|low).\n\nLOG:\n" + log[:12000]
+        "root_cause, suggested_fix, confidence (high|medium|low), "
+        "fix_commands (array of short shell commands).\n\nLOG:\n" + log[:12000]
     )
     models_to_try = [model]
     if "gemma-4" in model:
-        models_to_try.extend(["gemma-2-27b-it", "gemma-2-9b-it", "gemini-1.5-flash"])
+        models_to_try.extend(["gemma-4-31b-it", "gemini-2.5-flash", "gemini-flash-latest"])
 
     for m_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
@@ -136,6 +139,9 @@ def gemma_triage(log: str, model: str) -> Optional[TriageResult]:
                 m = re.search(r"\{[\s\S]*\}", text)
                 if m:
                     data = json.loads(m.group(0))
+                    cmds = data.get("fix_commands") or []
+                    if not isinstance(cmds, list):
+                        cmds = []
                     return TriageResult(
                         summary=str(data.get("summary", "Gemma triage complete."))[:500],
                         failing_step=str(data.get("failing_step", "Unknown"))[:200],
@@ -143,6 +149,8 @@ def gemma_triage(log: str, model: str) -> Optional[TriageResult]:
                         suggested_fix=str(data.get("suggested_fix", ""))[:800],
                         confidence=str(data.get("confidence", "medium"))[:20],
                         engine="gemma",
+                        fix_commands=[str(c)[:200] for c in cmds][:8],
+                        model=m_name,
                     )
         except Exception:
             continue
@@ -206,7 +214,7 @@ async def triage_image(
         prompt += "\n\nLog:\n" + log[:4000]
     models_to_try = [model]
     if "gemma-4" in model:
-        models_to_try.extend(["gemini-1.5-flash", "gemini-1.5-pro"])
+        models_to_try.extend(["gemma-4-31b-it", "gemini-2.5-flash", "gemini-flash-latest"])
 
     for m_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
@@ -225,6 +233,9 @@ async def triage_image(
                 m = re.search(r"\{[\s\S]*\}", text)
                 if m:
                     data = json.loads(m.group(0))
+                    cmds = data.get("fix_commands") or []
+                    if not isinstance(cmds, list):
+                        cmds = []
                     return TriageResult(
                         summary=str(data.get("summary", "Screenshot reviewed."))[:500],
                         failing_step=str(data.get("failing_step", "CI"))[:200],
@@ -232,12 +243,28 @@ async def triage_image(
                         suggested_fix=str(data.get("suggested_fix", ""))[:800],
                         confidence=str(data.get("confidence", "medium"))[:20],
                         engine="gemma",
+                        fix_commands=[str(c)[:200] for c in cmds][:8],
+                        model=m_name,
                     )
         except Exception:
             continue
     return rule_triage(log or "image triage failed; falling back")
 
 
+
+class CompareResult(BaseModel):
+    rules: TriageResult
+    gemma: Optional[TriageResult] = None
+
+
+@app.post("/api/compare", response_model=CompareResult)
+def compare(req: TriageRequest) -> CompareResult:
+    """Side-by-side rules vs Gemma — great for show-and-tell."""
+    rules = rule_triage(req.log)
+    gemma = gemma_triage(req.log, req.model)
+    return CompareResult(rules=rules, gemma=gemma)
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("nurse:app", host="127.0.0.1", port=8787, reload=False)
+    uvicorn.run("nurse:app", host="0.0.0.0", port=int(os.environ.get("PORT", "8787")), reload=False)

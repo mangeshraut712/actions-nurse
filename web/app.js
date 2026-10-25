@@ -1,175 +1,167 @@
 /**
- * Actions Nurse — Frontend Application Logic
+ * Actions Nurse — Frontend
  * Hacktoberfest Hack Day Pune x Cloud Native Pune
  */
+
+function renderResult(data) {
+  const resultPanel = document.getElementById('result');
+  resultPanel.hidden = false;
+  document.getElementById('summary').textContent = data.summary || 'Triage completed.';
+  document.getElementById('step').textContent = data.failing_step || 'Unknown';
+  document.getElementById('cause').textContent = data.root_cause || 'Not identified';
+  document.getElementById('fix').textContent = data.suggested_fix || 'Inspect CI logs.';
+  const cmds = data.fix_commands || [];
+  document.getElementById('cmds').textContent = cmds.length ? cmds.join(' · ') : '—';
+  const confEl = document.getElementById('conf');
+  const conf = (data.confidence || 'medium').toLowerCase();
+  confEl.innerHTML = `<span class="badge badge-${conf}">${conf.toUpperCase()}</span>`;
+  const engine = (data.engine || 'rules').toLowerCase();
+  document.getElementById('engine').innerHTML =
+    `<span class="badge badge-${engine}">${engine === 'gemma' ? 'Gemma 4' : 'Rules'}</span>`;
+  resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 async function boot() {
   const healthEl = document.getElementById('health');
   const fixturesEl = document.getElementById('fixtures');
   const triageBtn = document.getElementById('triage');
+  const compareBtn = document.getElementById('compare');
   const logEl = document.getElementById('log');
   const fileInput = document.getElementById('image');
   const fileLabel = document.querySelector('.file');
-  const resultPanel = document.getElementById('result');
 
-  // 1. Health check
   try {
     const res = await fetch('/api/health');
-    if (!res.ok) throw new Error('Health check failed');
     const health = await res.json();
-    if (health.gemma_key) {
-      healthEl.textContent = 'Gemma 4 key ready';
-      healthEl.className = 'pill ok';
-    } else {
-      healthEl.textContent = 'Rules mode (no GEMINI_API_KEY)';
-      healthEl.className = 'pill ok';
-    }
+    healthEl.textContent = health.gemma_key ? 'Gemma 4 key ready' : 'Rules mode (no GEMINI_API_KEY)';
+    healthEl.className = 'pill ok';
   } catch (err) {
-    console.error('Health check error:', err);
     healthEl.textContent = 'API offline';
     healthEl.className = 'pill offline';
   }
 
-  // 2. Load fixtures
   try {
     const res = await fetch('/api/fixtures');
     const data = await res.json();
-    const fixtures = data.fixtures || [];
-
     fixturesEl.innerHTML = '';
-    for (const name of fixtures) {
+    for (const name of data.fixtures || []) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = name;
-      btn.title = `Load fixture ${name}`;
       btn.onclick = async () => {
-        // Toggle active styling
         fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
-
-        try {
-          const fixRes = await fetch(`/api/fixtures/${encodeURIComponent(name)}`);
-          const fixData = await fixRes.json();
-          if (fixData.log) {
-            logEl.value = fixData.log;
-            logEl.focus();
-          }
-        } catch (err) {
-          console.error(`Failed loading fixture ${name}:`, err);
-        }
+        const fixRes = await fetch(`/api/fixtures/${encodeURIComponent(name)}`);
+        const fixData = await fixRes.json();
+        if (fixData.log) logEl.value = fixData.log;
       };
       fixturesEl.appendChild(btn);
     }
-  } catch (err) {
-    console.error('Failed to load fixtures:', err);
+  } catch (_) {
     fixturesEl.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">Failed to load fixtures</span>';
   }
 
-  // 3. File selection indicator
   if (fileInput && fileLabel) {
     const fileStatus = document.createElement('span');
     fileStatus.className = 'file-selected';
     fileLabel.parentNode.insertBefore(fileStatus, fileLabel.nextSibling);
-
     fileInput.addEventListener('change', () => {
-      if (fileInput.files && fileInput.files[0]) {
-        fileStatus.textContent = `Attached: ${fileInput.files[0].name}`;
-      } else {
-        fileStatus.textContent = '';
-      }
+      fileStatus.textContent = fileInput.files?.[0] ? `Attached: ${fileInput.files[0].name}` : '';
     });
   }
 
-  // Quick copy on suggested fix
   const fixEl = document.getElementById('fix');
   if (fixEl) {
     fixEl.style.cursor = 'pointer';
     fixEl.title = 'Click to copy suggested fix';
     fixEl.addEventListener('click', async () => {
       const text = fixEl.textContent;
-      if (text && text.trim()) {
-        try {
-          await navigator.clipboard.writeText(text.trim());
-          const orig = fixEl.textContent;
-          fixEl.textContent = '✓ Copied fix to clipboard!';
-          setTimeout(() => {
-            fixEl.textContent = orig;
-          }, 1400);
-        } catch (_) {}
-      }
+      if (!text?.trim()) return;
+      try {
+        await navigator.clipboard.writeText(text.trim());
+        const orig = fixEl.textContent;
+        fixEl.textContent = '✓ Copied fix to clipboard!';
+        setTimeout(() => { fixEl.textContent = orig; }, 1400);
+      } catch (_) {}
     });
   }
 
-  // 4. Triage action
   triageBtn.addEventListener('click', async () => {
     const log = logEl.value.trim();
-    const file = fileInput && fileInput.files && fileInput.files[0];
-
+    const file = fileInput?.files?.[0];
     if (!log && !file) {
       alert('Please paste a failed CI log or select a sample fixture above.');
-      logEl.focus();
       return;
     }
-
     triageBtn.disabled = true;
     const originalText = triageBtn.textContent;
     triageBtn.textContent = 'Triaging failure...';
-
+    document.getElementById('comparePanel').hidden = true;
     try {
       let data;
       if (file) {
-        // Multimodal path
         const fd = new FormData();
         fd.append('image', file);
         fd.append('log', log);
         fd.append('model', 'gemma-4-26b-a4b-it');
-
-        const res = await fetch('/api/triage-image', {
-          method: 'POST',
-          body: fd,
-        });
+        const res = await fetch('/api/triage-image', { method: 'POST', body: fd });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json();
       } else {
-        // Text path
         const res = await fetch('/api/triage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            log: log,
-            model: 'gemma-4-26b-a4b-it',
-          }),
+          body: JSON.stringify({ log, model: 'gemma-4-26b-a4b-it' }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json();
       }
-
-      // Render result
-      resultPanel.hidden = false;
-      document.getElementById('summary').textContent = data.summary || 'Triage completed.';
-      document.getElementById('step').textContent = data.failing_step || 'Unknown';
-      document.getElementById('cause').textContent = data.root_cause || 'Not identified';
-      document.getElementById('fix').textContent = data.suggested_fix || 'Inspect CI logs.';
-
-      // Confidence badge
-      const confEl = document.getElementById('conf');
-      const conf = (data.confidence || 'medium').toLowerCase();
-      confEl.innerHTML = `<span class="badge badge-${conf}">${conf.toUpperCase()}</span>`;
-
-      // Engine badge
-      const engineEl = document.getElementById('engine');
-      const engine = (data.engine || 'rules').toLowerCase();
-      const engineLabel = engine === 'gemma' ? 'Gemma 4' : 'Rules';
-      engineEl.innerHTML = `<span class="badge badge-${engine}">${engineLabel}</span>`;
-
-      // Scroll result into view smoothly
-      resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      renderResult(data);
     } catch (err) {
-      console.error('Triage failed:', err);
+      console.error(err);
       alert('Error triaging CI failure. Please check backend connection.');
     } finally {
       triageBtn.disabled = false;
       triageBtn.textContent = originalText;
+    }
+  });
+
+  compareBtn.addEventListener('click', async () => {
+    const log = logEl.value.trim();
+    if (!log) {
+      alert('Paste a log or pick a fixture first.');
+      return;
+    }
+    compareBtn.disabled = true;
+    const original = compareBtn.textContent;
+    compareBtn.textContent = 'Comparing...';
+    try {
+      const res = await fetch('/api/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ log, model: 'gemma-4-26b-a4b-it' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const panel = document.getElementById('comparePanel');
+      panel.hidden = false;
+      document.getElementById('result').hidden = true;
+      document.getElementById('rulesSummary').textContent = data.rules?.summary || '';
+      document.getElementById('rulesStep').textContent = data.rules?.failing_step || '';
+      document.getElementById('rulesCause').textContent = data.rules?.root_cause || '';
+      document.getElementById('rulesFix').textContent = data.rules?.suggested_fix || '';
+      const g = data.gemma;
+      document.getElementById('gemmaSummary').textContent = g?.summary || 'Gemma unavailable (key missing or API error) — rules still work.';
+      document.getElementById('gemmaStep').textContent = g?.failing_step || '—';
+      document.getElementById('gemmaCause').textContent = g?.root_cause || '—';
+      document.getElementById('gemmaFix').textContent = g?.suggested_fix || '—';
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      console.error(err);
+      alert('Compare failed.');
+    } finally {
+      compareBtn.disabled = false;
+      compareBtn.textContent = original;
     }
   });
 }

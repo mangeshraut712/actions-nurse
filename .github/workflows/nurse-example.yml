@@ -1,0 +1,17 @@
+name: Actions Nurse example
+on:
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Fixture filename under fixtures/
+        default: npm-typecheck.txt
+jobs:
+  nurse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Triage fixture
+        uses: ./action
+        with:
+          log-path: fixtures/${{ inputs.fixture }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
