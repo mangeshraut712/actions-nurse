@@ -15,13 +15,13 @@
 
 ---
 
-### [0:35 – 1:30] Live Demo: Quick Triage & Resilience
+### [0:35 – 1:35] Live Demo: Checkout Auth + Multimodal Triage
 
 **Action 1**: Open `http://127.0.0.1:8787`.
 > *"Notice the interface: clean, responsive, and ready out of the box. Notice the top badge indicates our status."*
 
 **Action 2**: Click **Load red screenshot demo**.
-> *"This is a realistic red Actions run: checkout failed because the runner cannot read a repository username. One click loads both the screenshot and its matching sanitized log — so this is a genuine multimodal Gemma 4 request, not an image pasted into slides."*
+> *"This is a realistic red Actions run: checkout failed because the runner cannot read a repository username. One click loads both the bundled screenshot and its matching sanitized `checkout-auth` log. When I click triage, Actions Nurse sends those two parts together to `/api/triage-image` — a genuine multimodal Gemma 4 request, not an image pasted into slides."*
 >
 > *"I click **Triage with Gemma 4**. The result keeps the evidence separate from the recommendation: failing step, root cause, suggested fix, confidence, engine badge, and copyable commands."*
 >
@@ -43,7 +43,7 @@
 
 ---
 
-### [1:30 – 2:15] Gemma 4 & Offline Reliability
+### [1:35 – 2:20] Gemma 4 & Offline Reliability
 
 > *"Under the hood, this is deliberately Gemma-first. With `GEMINI_API_KEY`, the app sends the log — and, when attached, the screenshot — to **Gemma 4** first. We require structured JSON so the output is a diagnosis plus reviewable commands, not a vague chatbot answer.*
 >
@@ -54,7 +54,7 @@
 
 ---
 
-### [2:15 – 2:45] Open Source & Prize Targets
+### [2:20 – 2:50] Open Source & Prize Targets
 
 > *"Why this matters for Cloud Native Pune:*  
 > *In Kubernetes and CI/CD pipelines, engineers need actionable feedback, fast. Actions Nurse is 100% open-source under the MIT license with a zero-friction FastAPI + vanilla JS stack. It also ships as a composite GitHub Action that collects failed-step logs, writes the job summary, and preserves a markdown report artifact.*

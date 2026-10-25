@@ -16,8 +16,8 @@ Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/
 
 | Prize | How Actions Nurse fits |
 | --- | --- |
-| **Best Use of Gemma 4** | Default model `gemma-4-26b-a4b-it` for log + screenshot triage; 12-second bounded response and side-by-side **Rules vs Gemma** evidence view |
-| **Best Open-Source AI** | MIT · FastAPI · composite Action · Docker · offline rules · no vendor lock-in |
+| **Best Use of Gemma 4** | Sends the matching `checkout-auth` log **and** bundled red Actions screenshot to `POST /api/triage-image`; a 12-second Gemma-first budget, structured diagnosis, and **Rules vs Gemma** view make model use and fallback provenance visible |
+| **Best Open-Source AI** | MIT-licensed FastAPI + vanilla JS, five reproducible red-CI fixtures, a composite GitHub Action, Docker configuration, and a key-free deterministic rules path for no-lock-in reliability |
 
 Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, or as a tiny FastAPI service / Docker container for local demos.
 
@@ -33,7 +33,7 @@ uvicorn nurse:app --host 127.0.0.1 --port 8787
 # open http://127.0.0.1:8787
 ```
 
-For the 20-second multimodal moment, click **Load red screenshot demo**. It attaches the bundled failing Actions screenshot and its matching `checkout-auth` log, then click **Triage with Gemma 4**. No key? The result honestly shows the deterministic rules fallback.
+For the 20-second multimodal moment, click **Load red screenshot demo**. It attaches the bundled failing Actions screenshot and its matching `checkout-auth` log; then click **Triage with Gemma 4**. No key? The result honestly shows the deterministic rules fallback. This exact screenshot + log path is the recommended Gemma 4 demo.
 
 ![Bundled failing GitHub Actions screenshot](docs/fixtures-img/red-actions-permission-failure.png)
 
@@ -115,7 +115,7 @@ Composite Action (`action/`) shells out to the same triage logic (`action/nurse_
 
 ## Fixtures
 
-Six reproducible failures live under `fixtures/`: TypeScript typecheck, pytest assertion, Node OOM, npm resolution, disk-full/ENOSPC, and checkout/repository auth. Load them from the UI chips or:
+Five reproducible failures live under `fixtures/`: TypeScript typecheck, pytest assertion, Node OOM, disk-full/ENOSPC, and checkout/repository auth. The separate bundled screenshot pairs with the checkout-auth fixture for the multimodal demo. Load the text fixtures from the UI chips or:
 
 ```bash
 curl -s localhost:8787/api/fixtures

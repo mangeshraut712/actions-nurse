@@ -14,17 +14,22 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - [x] Dockerfile + docker-compose
 - [x] Judge-first README + MLH-SUBMISSION.md + demo-script.md
 - [x] Fixtures: typecheck, pytest, OOM, npm/disk/ENOSPC, checkout-auth
-- [ ] Public demo URL (tunnel) — nice-to-have; local demo is documented honestly
+- [x] Public demo tunnel smoke-tested — temporary Cloudflare quick tunnel; local demo remains the durable judge path
 - [x] Screenshot fixture image under `docs/fixtures-img/` for multimodal live demo
 - [ ] MLH submit both categories (~5:00 PM IST)
 
 ## Demo story (2–3 min)
-1. Paste TS2305 fixture → structured fix + copy commands
-2. **Compare Rules vs Gemma** → show open-AI value
-3. Composite Action + Docker as cloud-native OSS path
-4. Optional: attach red Actions screenshot for multimodal
+1. **Load red screenshot demo** → matching `checkout-auth` log + screenshot enter the multimodal path
+2. Show structured diagnosis and visibly labeled Gemma/rules provenance
+3. **Compare Rules vs Gemma** → make the model contribution legible
+4. Show composite Action + Docker configuration as the cloud-native OSS path
 
 ## Crosscheck (2026-10-25 ~3:55 PM IST)
 - Repo cwd: `/Users/mangeshraut/codex-work/actions-nurse` only
 - Latest pushed: see `git log -1`
 - Rules path verified for all fixtures + HTTP triage/compare without API key
+
+## Crosscheck (2026-10-25 ~4:05 PM IST)
+- Full evidence: [`CROSSCHECK.md`](CROSSCHECK.md)
+- Public quick tunnel reached local health successfully, but is intentionally not used as a permanent submission link.
+- Docker client is installed; build verification is blocked because the local Docker daemon is not running. Do not claim a successful image build.
