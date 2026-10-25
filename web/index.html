@@ -60,20 +60,20 @@
     <section class="panel compare" id="comparePanel" hidden>
       <div class="compare-hero">
         <div class="compare-hero-copy">
-          <span class="eyebrow" id="compareEyebrow">Evidence → proposal → deterministic check</span>
-          <h2 id="compareHeadline">Gemma proposes. Rules check known categories.</h2>
-          <p id="compareContext">The log anchors the baseline. An attached screenshot is additional context for Gemma.</p>
+          <span class="eyebrow" id="compareEyebrow">Evidence → proposal → category check</span>
+          <h2 id="compareHeadline">Gemma proposes. Rules check the failure category.</h2>
+          <p id="compareContext">Rules read the log. Gemma sees that log plus the screenshot.</p>
         </div>
         <ol class="compare-flow" aria-label="Triage flow">
-          <li><span>01</span><div><strong>Rules baseline</strong><small>Known log signature</small></div></li>
+          <li><span>01</span><div><strong>Rules baseline</strong><small id="flowRulesNote">Checking log signature</small></div></li>
           <li><span>02</span><div><strong id="flowGemmaTitle">Gemma proposal</strong><small id="flowGemmaNote">Text + screenshot</small></div></li>
-          <li><span>03</span><div><strong id="flowCheckTitle">Rules check</strong><small id="flowCheckNote">Confirm or override</small></div></li>
+          <li><span>03</span><div><strong id="flowCheckTitle">Category check</strong><small id="flowCheckNote">Confirm, override, or unverified</small></div></li>
         </ol>
       </div>
       <p id="validationBanner" class="validation-banner" role="status"></p>
       <div class="section-heading">
-        <div><h3>Same incident, two views</h3><p>Review the deterministic evidence beside Gemma’s diagnosis and input provenance.</p></div>
-        <span class="compare-label">Judge proof surface</span>
+        <div><h3>Same incident, two views</h3><p>Compare the log-based Rules diagnosis with Gemma’s proposal.</p></div>
+        <span class="compare-label">Evidence trace</span>
       </div>
       <div class="compare-grid">
         <article class="rules-card">
@@ -98,6 +98,6 @@
     </section>
   </main>
   <footer>Open-weight <strong>Gemma 4</strong> via Gemini API · deterministic rules fallback · composite GitHub Action · MIT</footer>
-  <script src="/static/app.js?v=9"></script>
+  <script src="/static/app.js?v=10"></script>
 </body>
 </html>

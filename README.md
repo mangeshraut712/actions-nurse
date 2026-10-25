@@ -3,8 +3,8 @@
 **Open-weight Gemma 4 triage for failed GitHub Actions**  
 Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/events/hacktoberfest-hack-day-pune-x-cloud-native-pune)
 
-> Paste a red CI log (or load the included red screenshot demo) → get failing step, root cause, suggested fix, and copy-paste shell commands.
-> Gemma-first: **Gemma 4** gets a bounded **20-second** attempt; deterministic rules check known failure categories and keep a key-free diagnosis available.
+> When CI fails, pair the log with the red-run screenshot → Gemma 4 proposes a diagnosis → deterministic Rules check the failure category.
+> Get a reviewable first response within a bounded **20-second** model attempt; the key-free Rules path remains available, and suggestions are never executed.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Gemma%204-multimodal-purple)](#)
@@ -16,8 +16,8 @@ Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/
 
 | Prize | How Actions Nurse fits |
 | --- | --- |
-| **Best Use of Gemma 4** | One click loads the `checkout-auth` log + bundled red Actions screenshot and runs `/api/compare-image`; Gemma proposes a structured diagnosis, deterministic rules check known signatures, and the UI exposes both inputs and provenance under a bounded 20-second model attempt |
-| **Best Open-Source AI** | MIT-licensed FastAPI + vanilla JS, five reproducible red-CI fixtures, a composite GitHub Action with scoped workflow permissions and a report artifact, and a key-free deterministic path for reproducible local use |
+| **Best Use of Gemma 4** | With a local key, one click sends the `checkout-auth` log + bundled Actions screenshot to Gemma; deterministic Rules check the category, while the UI shows both results, provenance, and match/conflict/unverified outcome |
+| **Best Open-Source AI** | MIT-licensed FastAPI + vanilla JS, five reproducible failures, a composite Action with scoped read permissions and report artifact, plus a key-free Rules path and CI-tested Docker Compose build |
 
 Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, or as a tiny FastAPI service / Docker container for local demos.
 
@@ -33,7 +33,7 @@ NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8788
 # open http://127.0.0.1:8788 (local Gemma path; keep the key-backed server on loopback)
 ```
 
-For the one-click multimodal moment, press **Run screenshot demo · 1 click**. It attaches the bundled failing Actions screenshot, loads its matching `checkout-auth` log, and opens the side-by-side comparison. With a key and `NURSE_RULES_ONLY=false`, Gemma receives both inputs; deterministic rules check the proposal against known log signatures. A mismatch falls back to the rules diagnosis, and an unknown signature stays labeled as unverified. Without a key—or on the public demo—the rules baseline remains available and the UI says Gemma was skipped.
+For the one-click multimodal moment, press **Run screenshot demo · 1 click**. It attaches the bundled failing Actions screenshot, loads its matching `checkout-auth` log, and opens the side-by-side comparison. With a key and `NURSE_RULES_ONLY=false`, Gemma receives both inputs; deterministic Rules check the proposal against known log signatures. A mismatch makes the Rules diagnosis final; an unknown signature stays labeled unverified. Without a key—or on the public demo—the Rules baseline remains available and the UI says Gemma was skipped.
 
 ![Bundled failing GitHub Actions screenshot](docs/fixtures-img/red-actions-permission-failure.png)
 

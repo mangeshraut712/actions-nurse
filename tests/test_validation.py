@@ -2,10 +2,20 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from nurse import TriageResult, final_triage, parse_model_response as nurse_parse_response, rule_triage, validate_gemma_result
+from nurse import (
+    TriageResult,
+    final_triage,
+    guard_model_credential_advice as nurse_guard_credential_advice,
+    health,
+    parse_model_response as nurse_parse_response,
+    rule_triage,
+    validate_gemma_result,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +86,25 @@ class GemmaValidationTests(unittest.TestCase):
         self.assertEqual(result["engine"], "rules")
         self.assertEqual(result["validation_status"], "overridden")
         self.assertEqual(result["failing_step"], "Checkout / repository access")
+
+    def test_broad_classic_pat_advice_is_replaced_in_app_and_action(self) -> None:
+        proposal = {
+            "suggested_fix": "Use a Personal Access Token (PAT) with 'repo' scope to access the private dependency.",
+            "fix_commands": ["echo $GITHUB_TOKEN"],
+        }
+        for guard in (nurse_guard_credential_advice, CLI.guard_model_credential_advice):
+            with self.subTest(guard=guard.__module__):
+                safe = guard(proposal)
+                self.assertIn("broad token scope", safe["suggested_fix"])
+                self.assertIn("read-only contents access", safe["suggested_fix"])
+                self.assertNotIn("repo' scope", safe["suggested_fix"])
+                self.assertEqual(safe["fix_commands"], [])
+
+    def test_rules_only_health_does_not_expose_key_presence(self) -> None:
+        with patch("nurse.RULES_ONLY", True), patch.dict(os.environ, {"GEMINI_API_KEY": "configured"}):
+            status = health()
+        self.assertTrue(status["rules_only"])
+        self.assertFalse(status["gemma_key"])
 
 
 if __name__ == "__main__":

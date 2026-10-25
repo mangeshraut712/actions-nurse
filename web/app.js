@@ -334,19 +334,26 @@ async function boot() {
           ? 'no Gemini API key is configured'
           : 'Gemma returned no result within the request budget';
       document.getElementById('compareHeadline').textContent = g
-        ? 'Gemma proposes. Rules check known categories.'
-        : 'Rules stay ready when Gemma is skipped.';
+        ? validationStatus === 'confirmed'
+          ? 'Gemma’s category matches a known failure.'
+          : validationStatus === 'overridden'
+            ? 'Category conflict. Rules choose the result.'
+            : 'No signature matched. Gemma stays unverified.'
+        : 'Rules diagnose the log when Gemma is skipped.';
       document.getElementById('compareEyebrow').textContent = g
-        ? 'Evidence → proposal → deterministic check'
-        : 'Evidence → rules baseline → deterministic result';
+        ? 'Evidence → proposal → category check'
+        : 'Evidence → Rules baseline → diagnosis';
       document.getElementById('compareContext').textContent = g
-        ? `Rules establish the baseline from the log. Gemma received ${file ? 'that log plus the screenshot' : 'the same text log'}; its reported failure category is checked against known log signatures before single-result triage can accept it.`
-        : `Rules returned a deterministic baseline from the log. Gemma was skipped because ${skipReason}; no model proposal was validated.`;
+        ? `Rules read the log. Gemma saw ${file ? 'that log plus the screenshot' : 'the same log'}; known signatures check its failure category.`
+        : `Rules diagnosed the log. Gemma was skipped because ${skipReason}; this result has no model proposal.`;
+      document.getElementById('flowRulesNote').textContent = data.rules?.patterns?.length
+        ? 'Known log signature'
+        : 'No known signature';
       document.getElementById('flowGemmaTitle').textContent = g ? 'Gemma proposal' : 'Gemma skipped';
       document.getElementById('flowGemmaNote').textContent = g
         ? `${file ? 'Log + screenshot' : 'Log only'}${g.model ? ` · ${g.model}` : ''}`
         : skipReason;
-      document.getElementById('flowCheckTitle').textContent = g ? 'Rules check' : 'Rules result';
+      document.getElementById('flowCheckTitle').textContent = g ? 'Category check' : 'Rules result';
       document.getElementById('flowCheckNote').textContent = g
         ? validationStatus === 'confirmed'
           ? 'Known category matched'

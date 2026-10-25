@@ -21,11 +21,11 @@ Open `http://127.0.0.1:8788` for the key-enabled demo. The public quick tunnel o
 
 **Action:** Open `http://127.0.0.1:8788` and click **Run screenshot demo · 1 click**.
 
-> “One click loads this red Actions screenshot and its matching sanitized `checkout-auth` log, then runs the comparison. The Rules baseline reads the log. Gemma receives the same log plus the screenshot as image input.”
+> “One click loads this red Actions screenshot and its matching sanitized `checkout-auth` log. Rules reads the log; Gemma receives the same log plus the screenshot. The UI shows the separate inputs and the live model proposal.”
 
 **Action:** Point to the two cards and the Rules check banner.
 
-> “Gemma proposes the failure category and fix. Rules independently look for a known signature in the log. A matching category is confirmed; a conflict makes single-result triage use the Rules diagnosis; a log with no known signature stays labeled unverified. The comparison keeps both views visible so you can judge the model’s contribution.”
+> “Gemma proposes the failure category and fix. Rules independently checks the known log signature. A match confirms the category; a conflict makes the deterministic diagnosis the final single result; no match stays visibly unverified. The comparison keeps both views on screen so you can judge the model’s contribution.”
 
 > “The UI also shows exactly what Gemma received and which engine returned the diagnosis. Suggested commands can be copied, but Actions Nurse never runs them.”
 
@@ -35,7 +35,7 @@ If the model is unavailable, say:
 
 ## 1:20–1:55 — Gemma with a safety boundary
 
-> “For a known failure, Gemma adds context to the same text and screenshot evidence, while the deterministic check limits which category can be accepted as the final single-result diagnosis. For an unfamiliar failure, it does not pretend the rules verified the model; it labels the proposal unverified. If the key, network, or model response is unavailable, the rules path remains usable under a bounded 20-second model budget.”
+> “For a known failure, Gemma adds context to the same text and screenshot evidence, while deterministic Rules check the failure category. Unknown signatures stay unverified, and conflicting categories return the Rules diagnosis. Credential guidance follows least privilege; commands are never run. If Gemma is unavailable, the Rules path remains usable under a bounded 20-second model budget.”
 
 ## 1:55–2:30 — Open source and prize fit
 
@@ -44,5 +44,7 @@ If the model is unavailable, say:
 > “The MIT-licensed repository includes five red-CI fixtures and a composite GitHub Action. On a failed workflow, it reads failed-step logs with scoped permissions, writes a job summary and Markdown report, and uploads the report. The Action also runs the deterministic category check; it never executes suggested commands.”
 
 > “That is the Gemma 4 use case: multimodal CI triage with an explicit evidence check. The open-source contribution is a reproducible, key-free rules path plus an Action teams can adapt to their own failed workflows.”
+
+> “The focus is the first response after CI fails: interpret the incident evidence and make the next step reviewable. The Action reports what it found; it does not retry jobs or change a repository.”
 
 > “Repo: `mangeshraut712/actions-nurse`. Thank you.”
