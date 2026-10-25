@@ -53,6 +53,14 @@ RULES = [
         "confidence": "high",
         "fix_commands": ["df -h", "du -sh ./* | sort -h"],
     }),
+    (r"Permission denied|fatal: could not read Username|Authentication failed|Repository not found", {
+        "summary": "CI failed because checkout or repository authentication was denied.",
+        "failing_step": "Checkout / repository access",
+        "root_cause": "The runner could not authenticate to, or lacked permission for, a repository or protected resource.",
+        "suggested_fix": "Check the checkout token, repository permissions, and any required PAT or deploy key; do not print credentials in logs.",
+        "confidence": "high",
+        "fix_commands": ["git remote -v", "git ls-remote origin"],
+    }),
 ]
 
 
@@ -183,6 +191,7 @@ def main() -> int:
     out_path = Path(os.environ.get("NURSE_OUTPUT", "nurse-report.md"))
     model = os.environ.get("NURSE_MODEL", "gemma-4-26b-a4b-it")
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
+    rules_only = os.environ.get("NURSE_RULES_ONLY", "").strip().lower() in {"1", "true", "yes"}
     run_id = os.environ.get("NURSE_WORKFLOW_RUN_ID", "")
 
     log = ""
@@ -196,7 +205,7 @@ def main() -> int:
         print("No log available (set NURSE_LOG_PATH or NURSE_WORKFLOW_RUN_ID)", file=sys.stderr)
         return 1
 
-    result = (gemma_triage(log, model, key) if key else None) or rule_triage(log)
+    result = (gemma_triage(log, model, key) if key and not rules_only else None) or rule_triage(log)
     out_path.write_text(to_markdown(result))
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:

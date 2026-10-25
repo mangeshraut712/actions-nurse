@@ -3,7 +3,7 @@
 **Open-weight Gemma 4 triage for failed GitHub Actions**  
 Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/events/hacktoberfest-hack-day-pune-x-cloud-native-pune)
 
-> Paste a red CI log (or attach a screenshot) → get failing step, root cause, suggested fix, and copy-paste shell commands.  
+> Paste a red CI log (or load the included red screenshot demo) → get failing step, root cause, suggested fix, and copy-paste shell commands.
 > Gemma-first: **Gemma 4** gets a hard **12-second** budget. Offline or on failure, deterministic rules keep the diagnosis available.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -33,13 +33,18 @@ uvicorn nurse:app --host 127.0.0.1 --port 8787
 # open http://127.0.0.1:8787
 ```
 
+For the 20-second multimodal moment, click **Load red screenshot demo**. It attaches the bundled failing Actions screenshot and its matching `checkout-auth` log, then click **Triage with Gemma 4**. No key? The result honestly shows the deterministic rules fallback.
+
+![Bundled failing GitHub Actions screenshot](docs/fixtures-img/red-actions-permission-failure.png)
+
 Health: `GET /api/health`  
 Triage: `POST /api/triage` `{ "log": "..." }`  
 Compare: `POST /api/compare` `{ "log": "..." }` → `{ rules, gemma }`  
 Multimodal: `POST /api/triage-image` (multipart log + screenshot)
 
 ```bash
-./scripts/smoke.sh
+./scripts/smoke.sh                     # always rules-only and fast
+NURSE_PROBE_GEMMA=1 ./scripts/smoke.sh # optional 3-second client-capped probe
 ```
 
 ---
@@ -63,6 +68,7 @@ jobs:
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}  # optional; rules fallback
           workflow-run-id: ${{ github.event.workflow_run.id }}
+          # rules-only: true  # use this for fully offline/reproducible runs
 ```
 
 Or paste a log file:
@@ -100,7 +106,7 @@ failed CI log / screenshot
           │ no / error
           ▼
    deterministic regex rules
-   (typecheck · pytest · OOM · npm)
+   (typecheck · pytest · OOM · disk · auth)
 ```
 
 Composite Action (`action/`) shells out to the same triage logic (`action/nurse_cli.py`) so CI and the web demo stay in sync.
@@ -109,7 +115,7 @@ Composite Action (`action/`) shells out to the same triage logic (`action/nurse_
 
 ## Fixtures
 
-Sample failures under `fixtures/` — load them from the UI chips or:
+Six reproducible failures live under `fixtures/`: TypeScript typecheck, pytest assertion, Node OOM, npm resolution, disk-full/ENOSPC, and checkout/repository auth. Load them from the UI chips or:
 
 ```bash
 curl -s localhost:8787/api/fixtures
@@ -121,7 +127,7 @@ curl -s localhost:8787/api/fixtures
 
 - **Repo:** https://github.com/mangeshraut712/actions-nurse  
 - **License:** MIT  
-- **Demo:** local `uvicorn` or Docker; Action path for cloud-native judges  
+- **Demo:** local `uvicorn` or Docker; no hosted URL is claimed because an ephemeral tunnel would not be a reliable judge experience
 - **Models:** Gemma 4 first; tries only compatible Gemma aliases within 12 seconds, then uses local rules
 - Full pitch: [`docs/MLH-SUBMISSION.md`](docs/MLH-SUBMISSION.md) · win checklist: [`docs/WIN-PLAN.md`](docs/WIN-PLAN.md)
 

@@ -25,6 +25,10 @@ inputs:
     description: 'Where to write the markdown report'
     required: false
     default: 'nurse-report.md'
+  rules-only:
+    description: 'Skip network model calls and use deterministic rules only'
+    required: false
+    default: 'false'
 outputs:
   summary:
     description: 'One-line triage summary'
@@ -47,6 +51,7 @@ runs:
         NURSE_WORKFLOW_RUN_ID: ${{ inputs.workflow-run-id }}
         NURSE_MODEL: ${{ inputs.model }}
         NURSE_OUTPUT: ${{ inputs.report-path }}
+        NURSE_RULES_ONLY: ${{ inputs.rules-only }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: |

@@ -26,9 +26,11 @@ MAX_LOG_CHARS = 12_000
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 GEMMA_BUDGET_SECONDS = 12
 DEFAULT_MODEL = "gemma-4-26b-a4b-it"
+RULES_ONLY = os.environ.get("NURSE_RULES_ONLY", "").strip().lower() in {"1", "true", "yes"}
 
 app = FastAPI(title="Actions Nurse", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(ROOT / "web")), name="static")
+app.mount("/demo-assets", StaticFiles(directory=str(ROOT / "docs" / "fixtures-img")), name="demo-assets")
 
 
 class TriageRequest(BaseModel):
@@ -103,6 +105,17 @@ RULES: list[tuple[str, dict[str, str]]] = [
             "confidence": "high",
             "summary": "CI failed because the runner filesystem is full.",
             "fix_commands": ["df -h", "du -sh ./* | sort -h"],
+        },
+    ),
+    (
+        r"Permission denied|fatal: could not read Username|Authentication failed|Repository not found",
+        {
+            "failing_step": "Checkout / repository access",
+            "root_cause": "The runner could not authenticate to, or lacked permission for, a repository or protected resource.",
+            "suggested_fix": "Check the checkout token, repository permissions, and any required PAT or deploy key; do not print credentials in logs.",
+            "confidence": "high",
+            "summary": "CI failed because checkout or repository authentication was denied.",
+            "fix_commands": ["git remote -v", "git ls-remote origin"],
         },
     ),
 ]
@@ -223,6 +236,7 @@ def health() -> dict[str, Any]:
     return {
         "ok": True,
         "gemma_key": bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")),
+        "rules_only": RULES_ONLY,
         "gemma_budget_seconds": GEMMA_BUDGET_SECONDS,
         "event": "Hacktoberfest Hack Day Pune x Cloud Native Pune",
     }
@@ -243,7 +257,7 @@ def get_fixture(name: str) -> JSONResponse:
 
 @app.post("/api/triage", response_model=TriageResult)
 def triage(req: TriageRequest) -> TriageResult:
-    return rule_triage(req.log) if req.rules_only else (gemma_triage(req.log, req.model) or rule_triage(req.log))
+    return rule_triage(req.log) if (RULES_ONLY or req.rules_only) else (gemma_triage(req.log, req.model) or rule_triage(req.log))
 
 
 @app.post("/api/triage-image", response_model=TriageResult)
@@ -257,11 +271,15 @@ async def triage_image(
         raise HTTPException(status_code=413, detail="image must be 5 MB or smaller")
     if not raw:
         raise HTTPException(status_code=422, detail="image is empty")
-    result = gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
+    result = None if RULES_ONLY else gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
     if result:
         return result
     fallback = rule_triage(log or "screenshot uploaded without a usable Gemma response")
-    fallback.summary = "Gemma was unavailable within 12 seconds; rules triage used the pasted log."
+    fallback.summary = (
+        "Rules-only mode is enabled; rules triage used the pasted log."
+        if RULES_ONLY
+        else "Gemma was unavailable within 12 seconds; rules triage used the pasted log."
+    )
     return fallback
 
 
@@ -275,7 +293,7 @@ class CompareResult(BaseModel):
 def compare(req: TriageRequest) -> CompareResult:
     """Side-by-side rules vs Gemma — great for show-and-tell."""
     rules = rule_triage(req.log)
-    gemma = gemma_triage(req.log, req.model)
+    gemma = None if (RULES_ONLY or req.rules_only) else gemma_triage(req.log, req.model)
     return CompareResult(rules=rules, gemma=gemma)
 
 

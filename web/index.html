@@ -10,10 +10,10 @@
   <header>
     <div>
       <h1>🩺 Actions Nurse</h1>
-      <p class="tag">Open-weight <strong>Gemma 4</strong> triage for failed GitHub Actions · Hacktoberfest Hack Day Pune x Cloud Native Pune</p>
+      <p class="tag"><strong>Gemma 4</strong> multimodal triage for failed GitHub Actions — a fast, transparent incident room for cloud-native teams.</p>
       <div class="badges">
         <span class="chip-badge">Gemma 4</span>
-        <span class="chip-badge">Multimodal</span>
+        <span class="chip-badge">Text + screenshot</span>
         <span class="chip-badge">MIT</span>
         <span class="chip-badge">Cloud Native</span>
       </div>
@@ -22,9 +22,12 @@
   </header>
   <main>
     <section class="panel">
-      <div class="row">
-        <label>Sample fixtures</label>
-        <div id="fixtures" class="chips"></div>
+      <div class="row fixture-row">
+        <div>
+          <label>Reproducible red-CI fixtures</label>
+          <div id="fixtures" class="chips"></div>
+        </div>
+        <button id="loadScreenshotDemo" class="screenshot-demo" type="button">Load red screenshot demo</button>
       </div>
       <label for="log">Failed CI log</label>
       <textarea id="log" rows="14" placeholder="Paste a failed GitHub Actions log…"></textarea>
@@ -34,7 +37,12 @@
         <button id="clear" class="ghost" type="button">Clear</button>
         <label class="file"><input type="file" id="image" accept="image/*" /> + CI screenshot</label>
       </div>
-      <p class="hint">Gemma is attempted first with a 12-second budget; deterministic rules are the reliable fallback. Commands are suggestions only — review before running.</p>
+      <div id="demoStatus" class="demo-status" aria-live="polite">Choose a fixture, paste a log, or load the bundled red screenshot.</div>
+      <figure id="imagePreview" class="image-preview" hidden>
+        <img id="previewImage" alt="Selected failing GitHub Actions screenshot" />
+        <figcaption id="previewCaption"></figcaption>
+      </figure>
+      <p class="hint">Gemma 4 is attempted first with a 12-second budget. Deterministic rules are the reliable fallback. Commands are suggestions only — review before running.</p>
     </section>
     <section class="panel result" id="result" hidden>
       <h2>Triage</h2>
@@ -49,10 +57,13 @@
       </dl>
     </section>
     <section class="panel compare" id="comparePanel" hidden>
-      <h2>Rules vs Gemma 4</h2>
+      <div class="section-heading">
+        <div><h2>Rules vs Gemma 4</h2><p>Same evidence, two clearly labeled paths. The model output is never disguised as a rule.</p></div>
+        <span class="compare-label">Judge proof surface</span>
+      </div>
       <div class="compare-grid">
-        <article>
-          <h3>Rules (offline)</h3>
+        <article class="rules-card">
+          <div class="card-title"><h3>Rules baseline</h3><span>Offline · deterministic</span></div>
           <p id="rulesSummary"></p>
           <dl>
             <dt>Step</dt><dd id="rulesStep"></dd>
@@ -60,8 +71,8 @@
             <dt>Fix</dt><dd id="rulesFix"></dd>
           </dl>
         </article>
-        <article>
-          <h3>Gemma 4</h3>
+        <article class="gemma-card">
+          <div class="card-title"><h3>Gemma 4 reasoning</h3><span>Text + screenshot capable</span></div>
           <p id="gemmaSummary"></p>
           <dl>
             <dt>Step</dt><dd id="gemmaStep"></dd>

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 BASE="${1:-http://127.0.0.1:8787}"
+RULES_ONLY=true
 echo "== health =="
 curl -fsS "$BASE/api/health" | python3 -m json.tool
 echo "== rules-only typecheck =="
@@ -15,6 +16,12 @@ curl -fsS -X POST "$BASE/api/triage" -H 'content-type: application/json' \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["engine"] == "rules"; assert d["failing_step"] == "Runner filesystem"; print("rules=", d["engine"], "step=", d["failing_step"])'
 echo "== compare =="
 curl -fsS -X POST "$BASE/api/compare" -H 'content-type: application/json' \
-  -d "$(python3 -c 'import json,sys; print(json.dumps({"log":sys.argv[1]}))' "$LOG")" \
-  | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["rules"]["engine"] == "rules"; print("rules=", d["rules"]["engine"], "gemma=", (d.get("gemma") or {}).get("engine"))'
+  -d "$(python3 -c 'import json,sys; print(json.dumps({"log":sys.argv[1], "rules_only":sys.argv[2].lower() in ("1", "true", "yes")}))' "$LOG" "$RULES_ONLY")" \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["rules"]["engine"] == "rules"; assert d.get("gemma") is None; print("rules=", d["rules"]["engine"], "gemma=skipped")'
+if [[ "${NURSE_PROBE_GEMMA:-0}" == "1" ]]; then
+  echo "== optional Gemma probe (3s client cap) =="
+  curl --max-time 3 -sS -X POST "$BASE/api/triage" -H 'content-type: application/json' \
+    -d "$(python3 -c 'import json,sys; print(json.dumps({"log":sys.argv[1], "rules_only":False}))' "$LOG")" \
+    | python3 -c 'import json,sys; print("engine=", json.load(sys.stdin).get("engine"))' || echo "Gemma probe timed out or is unavailable (expected without a key)."
+fi
 echo "SMOKE_OK"

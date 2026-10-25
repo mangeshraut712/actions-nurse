@@ -1,0 +1,5 @@
+Run actions/checkout@v4
+Fetching the repository
+remote: Permission to acme/private-dependency.git denied to github-actions[bot].
+fatal: could not read Username for 'https://github.com': terminal prompts disabled
+Error: Process completed with exit code 128.

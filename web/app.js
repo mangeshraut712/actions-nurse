@@ -57,6 +57,26 @@ async function boot() {
   const logEl = document.getElementById('log');
   const fileInput = document.getElementById('image');
   const fileLabel = document.querySelector('.file');
+  const screenshotDemoBtn = document.getElementById('loadScreenshotDemo');
+  const demoStatus = document.getElementById('demoStatus');
+  const preview = document.getElementById('imagePreview');
+  const previewImage = document.getElementById('previewImage');
+  const previewCaption = document.getElementById('previewCaption');
+
+  function setStatus(message) {
+    demoStatus.textContent = message;
+  }
+
+  function showImage(file, caption) {
+    if (!file) {
+      preview.hidden = true;
+      previewImage.removeAttribute('src');
+      return;
+    }
+    previewImage.src = URL.createObjectURL(file);
+    previewCaption.textContent = caption || `Attached: ${file.name}`;
+    preview.hidden = false;
+  }
 
   clearBtn.addEventListener('click', () => {
     logEl.value = '';
@@ -64,6 +84,8 @@ async function boot() {
     document.getElementById('result').hidden = true;
     document.getElementById('comparePanel').hidden = true;
     document.querySelector('.file-selected')?.replaceChildren();
+    showImage(null);
+    setStatus('Ready for another failure. Choose a fixture, paste a log, or load the bundled red screenshot.');
     fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
     logEl.focus();
   });
@@ -71,7 +93,7 @@ async function boot() {
   try {
     const res = await fetch('/api/health');
     const health = await res.json();
-    healthEl.textContent = health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key';
+    healthEl.textContent = health.rules_only ? 'Rules-only demo' : (health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key');
     healthEl.className = 'pill ok';
   } catch (err) {
     healthEl.textContent = 'API offline';
@@ -85,13 +107,14 @@ async function boot() {
     for (const name of data.fixtures || []) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.textContent = name;
+      btn.textContent = name.replace(/\.txt$/, '');
       btn.onclick = async () => {
         fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         const fixRes = await fetch(`/api/fixtures/${encodeURIComponent(name)}`);
         const fixData = await fixRes.json();
         if (fixData.log) logEl.value = fixData.log;
+        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage with Gemma 4” to diagnose it.`);
       };
       fixturesEl.appendChild(btn);
     }
@@ -104,9 +127,39 @@ async function boot() {
     fileStatus.className = 'file-selected';
     fileLabel.parentNode.insertBefore(fileStatus, fileLabel.nextSibling);
     fileInput.addEventListener('change', () => {
-      fileStatus.textContent = fileInput.files?.[0] ? `Attached: ${fileInput.files[0].name}` : '';
+      const file = fileInput.files?.[0];
+      fileStatus.textContent = file ? `Attached: ${file.name}` : '';
+      showImage(file);
+      if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage with Gemma 4.');
     });
   }
+
+  screenshotDemoBtn?.addEventListener('click', async () => {
+    screenshotDemoBtn.disabled = true;
+    screenshotDemoBtn.textContent = 'Loading screenshot…';
+    try {
+      const [imageRes, logRes] = await Promise.all([
+        fetch('/demo-assets/red-actions-permission-failure.png'),
+        fetch('/api/fixtures/checkout-auth.txt'),
+      ]);
+      if (!imageRes.ok || !logRes.ok) throw new Error('demo asset missing');
+      const blob = await imageRes.blob();
+      const file = new File([blob], 'red-actions-permission-failure.png', { type: 'image/png' });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      const fixture = await logRes.json();
+      logEl.value = fixture.log || '';
+      showImage(file, 'Bundled red Actions screenshot — checkout permission failure');
+      setStatus('Loaded the multimodal demo: screenshot + checkout-auth log. Press “Triage with Gemma 4”.');
+      fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+    } catch (_) {
+      setStatus('Could not load the bundled screenshot demo. You can still attach any CI screenshot.');
+    } finally {
+      screenshotDemoBtn.disabled = false;
+      screenshotDemoBtn.textContent = 'Load red screenshot demo';
+    }
+  });
 
   const fixEl = document.getElementById('fix');
   if (fixEl) {
@@ -134,6 +187,7 @@ async function boot() {
     triageBtn.disabled = true;
     const originalText = triageBtn.textContent;
     triageBtn.textContent = 'Triaging failure...';
+    setStatus(file ? 'Sending log + screenshot to the Gemma 4 path…' : 'Sending CI log to the Gemma 4 path…');
     document.getElementById('comparePanel').hidden = true;
     try {
       let data;
@@ -155,6 +209,7 @@ async function boot() {
         data = await res.json();
       }
       renderResult(data);
+      setStatus(`${data.engine === 'gemma' ? 'Gemma 4 returned a diagnosis.' : 'Rules fallback returned a diagnosis.'} Review commands before running them.`);
     } catch (err) {
       console.error(err);
       alert('Error triaging CI failure. Please check backend connection.');
@@ -173,6 +228,7 @@ async function boot() {
     compareBtn.disabled = true;
     const original = compareBtn.textContent;
     compareBtn.textContent = 'Comparing...';
+    setStatus('Building a transparent side-by-side comparison…');
     try {
       const res = await fetch('/api/compare', {
         method: 'POST',
@@ -193,6 +249,7 @@ async function boot() {
       document.getElementById('gemmaStep').textContent = g?.failing_step || '—';
       document.getElementById('gemmaCause').textContent = g?.root_cause || '—';
       document.getElementById('gemmaFix').textContent = g?.suggested_fix || '—';
+      setStatus(g ? 'Comparison ready: rules baseline beside Gemma 4.' : 'Rules baseline ready. Gemma needs a configured key in this runtime.');
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);

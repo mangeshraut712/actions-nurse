@@ -20,7 +20,14 @@
 **Action 1**: Open `http://127.0.0.1:8787`.
 > *"Notice the interface: clean, responsive, and ready out of the box. Notice the top badge indicates our status."*
 
-**Action 2**: Click the `npm-typecheck.txt` fixture button.
+**Action 2**: Click **Load red screenshot demo**.
+> *"This is a realistic red Actions run: checkout failed because the runner cannot read a repository username. One click loads both the screenshot and its matching sanitized log — so this is a genuine multimodal Gemma 4 request, not an image pasted into slides."*
+>
+> *"I click **Triage with Gemma 4**. The result keeps the evidence separate from the recommendation: failing step, root cause, suggested fix, confidence, engine badge, and copyable commands."*
+>
+> *"If this demo has no key or network, notice it says **Rules** instead of claiming Gemma. That transparent fallback still identifies checkout/repository access and tells us to verify the token or deploy key without exposing credentials."*
+
+**Action 3**: Click the `npm-typecheck` fixture button.
 > *"Let's test an everyday team headache: someone merged a PR with mismatched TypeScript exports. I click `npm-typecheck.txt`, which loads a real CI failure, and click **Triage with Gemma 4**."*  
 > *(Show results on screen)*  
 > *"Instantly, Actions Nurse isolates:*  
@@ -29,7 +36,7 @@
 > - *Suggested Fix: Align exports or rebase onto main*  
 > - *Confidence: High."*
 
-**Action 3**: Click `oom-killed.txt`.
+**Action 4**: Click `oom-killed`.
 > *"Now let's try an infrastructure error: Node.js running out of heap memory during bundling (`Exit Code 134`).*  
 > *(Click Triage)*  
 > *"Actions Nurse immediately spots the OOM kill and offers the exact environment fix: increasing `NODE_OPTIONS=--max-old-space-size=4096` in the GitHub Actions workflow YAML."*
@@ -42,8 +49,8 @@
 >
 > *The visible 12-second budget is intentional: if the key, network, or model response is unavailable, the deterministic rules engine returns a clearly labeled answer. That makes the demo resilient without pretending the fallback is Gemma."*
 
-**Action 4 (optional, 15 seconds):** Click **Compare Rules vs Gemma** on the same fixture.
-> *"This is our proof surface: the left card is the deterministic baseline; the right card is Gemma's contextual result when the key is available. It makes the model contribution inspectable."*
+**Action 5 (optional, 15 seconds):** Click **Compare Rules vs Gemma** on the same fixture.
+> *"This is our proof surface: the left card is an offline deterministic baseline; the right card is Gemma 4's contextual result when the key is available. Same evidence, provenance visible, and no model claim when it is unavailable."*
 
 ---
 
