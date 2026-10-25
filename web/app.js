@@ -11,7 +11,34 @@ function renderResult(data) {
   document.getElementById('cause').textContent = data.root_cause || 'Not identified';
   document.getElementById('fix').textContent = data.suggested_fix || 'Inspect CI logs.';
   const cmds = data.fix_commands || [];
-  document.getElementById('cmds').textContent = cmds.length ? cmds.join(' · ') : '—';
+  const commandsEl = document.getElementById('cmds');
+  commandsEl.replaceChildren();
+  if (!cmds.length) {
+    commandsEl.textContent = '—';
+  } else {
+    const list = document.createElement('div');
+    list.className = 'command-list';
+    cmds.forEach((command) => {
+      const row = document.createElement('div');
+      row.className = 'command';
+      const code = document.createElement('code');
+      code.textContent = command;
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'copy-command';
+      copy.textContent = 'Copy';
+      copy.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(command);
+          copy.textContent = 'Copied';
+          setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
+        } catch (_) {}
+      };
+      row.append(code, copy);
+      list.appendChild(row);
+    });
+    commandsEl.appendChild(list);
+  }
   const confEl = document.getElementById('conf');
   const conf = (data.confidence || 'medium').toLowerCase();
   confEl.innerHTML = `<span class="badge badge-${conf}">${conf.toUpperCase()}</span>`;
@@ -26,14 +53,25 @@ async function boot() {
   const fixturesEl = document.getElementById('fixtures');
   const triageBtn = document.getElementById('triage');
   const compareBtn = document.getElementById('compare');
+  const clearBtn = document.getElementById('clear');
   const logEl = document.getElementById('log');
   const fileInput = document.getElementById('image');
   const fileLabel = document.querySelector('.file');
 
+  clearBtn.addEventListener('click', () => {
+    logEl.value = '';
+    if (fileInput) fileInput.value = '';
+    document.getElementById('result').hidden = true;
+    document.getElementById('comparePanel').hidden = true;
+    document.querySelector('.file-selected')?.replaceChildren();
+    fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+    logEl.focus();
+  });
+
   try {
     const res = await fetch('/api/health');
     const health = await res.json();
-    healthEl.textContent = health.gemma_key ? 'Gemma 4 key ready' : 'Rules mode (no GEMINI_API_KEY)';
+    healthEl.textContent = health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key';
     healthEl.className = 'pill ok';
   } catch (err) {
     healthEl.textContent = 'API offline';

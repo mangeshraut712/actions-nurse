@@ -38,16 +38,19 @@
 
 ### [1:30 – 2:15] Gemma 4 & Offline Reliability
 
-> *"Under the hood, Actions Nurse utilizes a dual-engine architecture:*  
-> 1. *When connected with `GEMINI_API_KEY`, it calls Google's **Gemma 4** (`gemma-4-26b-a4b-it`) via the Gemini API for semantic code reasoning and multimodal screenshot triage.*  
-> 2. *Crucially, if you are offline, at a venue with spotty Wi-Fi, or without an API key, our deterministic pattern engine steps in automatically. Your triage and demos never break."*
+> *"Under the hood, this is deliberately Gemma-first. With `GEMINI_API_KEY`, the app sends the log — and, when attached, the screenshot — to **Gemma 4** first. We require structured JSON so the output is a diagnosis plus reviewable commands, not a vague chatbot answer.*
+>
+> *The visible 12-second budget is intentional: if the key, network, or model response is unavailable, the deterministic rules engine returns a clearly labeled answer. That makes the demo resilient without pretending the fallback is Gemma."*
+
+**Action 4 (optional, 15 seconds):** Click **Compare Rules vs Gemma** on the same fixture.
+> *"This is our proof surface: the left card is the deterministic baseline; the right card is Gemma's contextual result when the key is available. It makes the model contribution inspectable."*
 
 ---
 
 ### [2:15 – 2:45] Open Source & Prize Targets
 
 > *"Why this matters for Cloud Native Pune:*  
-> *In Kubernetes and CI/CD pipelines, engineers need actionable feedback, fast. Actions Nurse is 100% open-source under the MIT license with a zero-friction FastAPI + vanilla JS stack.*  
+> *In Kubernetes and CI/CD pipelines, engineers need actionable feedback, fast. Actions Nurse is 100% open-source under the MIT license with a zero-friction FastAPI + vanilla JS stack. It also ships as a composite GitHub Action that collects failed-step logs, writes the job summary, and preserves a markdown report artifact.*
 >  
 > *We are targeting:*  
 > - **Best Use of Gemma 4**: Applying lightweight, open-weight code models to developer productivity workflows.  

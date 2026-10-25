@@ -1,0 +1,28 @@
+name: Actions Nurse on failed CI
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  triage:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnose failed workflow
+        uses: mangeshraut712/actions-nurse/action@main
+        with:
+          workflow-run-id: ${{ github.event.workflow_run.id }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          report-path: nurse-report.md
+      - name: Upload nurse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: actions-nurse-report
+          path: nurse-report.md

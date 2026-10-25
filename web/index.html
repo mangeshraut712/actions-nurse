@@ -18,7 +18,7 @@
         <span class="chip-badge">Cloud Native</span>
       </div>
     </div>
-    <span id="health" class="pill">…</span>
+    <span id="health" class="pill">Checking runtime…</span>
   </header>
   <main>
     <section class="panel">
@@ -31,9 +31,10 @@
       <div class="row actions">
         <button id="triage" class="primary">Triage with Gemma 4</button>
         <button id="compare" class="secondary">Compare Rules vs Gemma</button>
+        <button id="clear" class="ghost" type="button">Clear</button>
         <label class="file"><input type="file" id="image" accept="image/*" /> + CI screenshot</label>
       </div>
-      <p class="hint">Tip: attach a red Actions screenshot for multimodal Gemma 4 triage. Offline rules keep the demo alive without a key.</p>
+      <p class="hint">Gemma is attempted first with a 12-second budget; deterministic rules are the reliable fallback. Commands are suggestions only — review before running.</p>
     </section>
     <section class="panel result" id="result" hidden>
       <h2>Triage</h2>

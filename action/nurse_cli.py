@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -44,11 +45,20 @@ RULES = [
         "confidence": "medium",
         "fix_commands": ["npm ci"],
     }),
+    (r"No space left on device|ENOSPC", {
+        "summary": "CI failed because the runner filesystem is full.",
+        "failing_step": "Runner filesystem",
+        "root_cause": "The runner ran out of disk space while writing build or cache files.",
+        "suggested_fix": "Remove oversized caches/artifacts, prune build output, or use a larger self-hosted runner.",
+        "confidence": "high",
+        "fix_commands": ["df -h", "du -sh ./* | sort -h"],
+    }),
 ]
 
 
 def rule_triage(log: str) -> dict:
-    for pattern, payload in RULES:
+    # Check the specific runner-capacity signal before broad package-manager noise.
+    for pattern, payload in sorted(RULES, key=lambda item: "ENOSPC" not in item[0]):
         if re.search(pattern, log, re.I):
             return {**payload, "engine": "rules", "patterns": [pattern]}
     step = "Unknown step"
@@ -68,15 +78,21 @@ def rule_triage(log: str) -> dict:
 
 
 def gemma_triage(log: str, model: str, key: str) -> dict | None:
+    """Gemma-first triage with a total 12-second budget before rules."""
     prompt = (
         "You are Actions Nurse. Reply ONLY JSON with keys summary, failing_step, "
         "root_cause, suggested_fix, confidence (high|medium|low), "
-        "fix_commands (array of shell commands).\n\nLOG:\n" + log[:12000]
+        "fix_commands (array of short, non-destructive shell commands). Do not invent evidence.\n\nLOG:\n" + log[:12000]
     )
     models = [model]
-    if "gemma-4" in model:
-        models += ["gemma-4-31b-it", "gemini-2.5-flash", "gemini-flash-latest"]
+    if "gemma-4" in model.lower():
+        models += ["gemma-4-31b-it", "gemma-4-26b-it"]
+    models = list(dict.fromkeys(models))
+    deadline = time.monotonic() + 12
     for m_name in models:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
             + urllib.parse.quote(m_name, safe="")
@@ -86,13 +102,18 @@ def gemma_triage(log: str, model: str, key: str) -> dict | None:
         body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=max(1, remaining)) as resp:
                 data = json.loads(resp.read().decode())
             text = data["candidates"][0]["content"]["parts"][0]["text"]
-            m = re.search(r"\{[\s\S]*\}", text)
-            if not m:
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                m = re.search(r"\{[\s\S]*\}", text)
+                if not m:
+                    continue
+                parsed = json.loads(m.group(0))
+            if not isinstance(parsed, dict):
                 continue
-            parsed = json.loads(m.group(0))
             cmds = parsed.get("fix_commands") or []
             if not isinstance(cmds, list):
                 cmds = []
@@ -140,47 +161,32 @@ Built for Hacktoberfest Hack Day Pune x Cloud Native Pune · Gemma 4 + offline r
 
 
 def maybe_fetch_failed_job_log(run_id: str) -> str | None:
-    """Optional: download first failed job log via gh when GITHUB_TOKEN is present."""
+    """Fetch only failed-step output from the workflow run when gh is available."""
     if not run_id or not os.environ.get("GITHUB_TOKEN"):
         return None
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not repo:
         return None
     try:
-        jobs = subprocess.check_output(
-            [
-                "gh", "api",
-                f"/repos/{repo}/actions/runs/{run_id}/jobs",
-                "--jq",
-                ".jobs[] | select(.conclusion==\"failure\") | .id",
-            ],
-            text=True,
-            timeout=30,
-        ).strip().splitlines()
-        if not jobs:
-            return None
-        job_id = jobs[0].strip()
-        log = subprocess.check_output(
-            ["gh", "api", f"/repos/{repo}/actions/jobs/{job_id}/logs"],
-            text=True,
-            timeout=60,
-            stderr=subprocess.DEVNULL,
+        return subprocess.check_output(
+            ["gh", "run", "view", run_id, "--repo", repo, "--log-failed"],
+            text=True, timeout=45, stderr=subprocess.DEVNULL,
         )
-        return log
     except Exception as exc:
         print(f"gh log fetch skipped: {exc}", file=sys.stderr)
         return None
 
 
 def main() -> int:
-    log_path = Path(os.environ.get("NURSE_LOG_PATH", ""))
+    log_path_raw = os.environ.get("NURSE_LOG_PATH", "").strip()
+    log_path = Path(log_path_raw) if log_path_raw else None
     out_path = Path(os.environ.get("NURSE_OUTPUT", "nurse-report.md"))
     model = os.environ.get("NURSE_MODEL", "gemma-4-26b-a4b-it")
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
     run_id = os.environ.get("NURSE_WORKFLOW_RUN_ID", "")
 
     log = ""
-    if log_path and log_path.exists():
+    if log_path and log_path.is_file():
         log = log_path.read_text(errors="replace")
     elif run_id:
         fetched = maybe_fetch_failed_job_log(run_id)

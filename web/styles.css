@@ -13,6 +13,7 @@ textarea{width:100%;background:#0a101c;color:var(--text);border:1px solid var(--
 .chips button{background:#182338;color:var(--text);border:1px solid var(--border);border-radius:999px;padding:.35rem .75rem;cursor:pointer}
 .row.actions{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-top:.85rem}
 button.primary{background:linear-gradient(135deg,#34d399,#60a5fa);color:#041018;border:0;border-radius:999px;padding:.65rem 1.1rem;font-weight:700;cursor:pointer}
+button{font:inherit} button:disabled{cursor:wait;opacity:.62}.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:.58rem .9rem;cursor:pointer}.ghost:hover{color:var(--text);border-color:var(--accent2)}
 .file{font-size:.85rem;color:var(--muted);cursor:pointer}.file input{display:none}
 dl{display:grid;grid-template-columns:8rem 1fr;gap:.55rem .75rem;margin:0}
 dt{color:var(--muted)} dd{margin:0}
@@ -23,6 +24,7 @@ footer{color:var(--muted);font-size:.85rem;padding-bottom:2rem}
 #fix { color: #86efac; background: rgba(52, 211, 153, 0.1); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.25); }
 #cause { color: #fca5a5; }
 #step { font-family: ui-monospace, Menlo, monospace; color: #93c5fd; }
+.command-list{display:grid;gap:.4rem}.command{display:flex;align-items:center;gap:.5rem;max-width:100%;background:#0a101c;border:1px solid var(--border);border-radius:8px;padding:.35rem .45rem}.command code{min-width:0;overflow:auto;white-space:nowrap;color:#dbeafe;font-size:.78rem}.copy-command{margin-left:auto;background:#182338;color:#c4d7f4;border:1px solid #334155;border-radius:6px;padding:.22rem .45rem;cursor:pointer;font-size:.72rem}
 .badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
 .badge-gemma { background: #1e3a5f; color: #60a5fa; border: 1px solid #3b82f6; }
 .badge-rules { background: #3b2d18; color: #fbbf24; border: 1px solid #d97706; }
@@ -47,6 +49,7 @@ button.secondary:hover { border-color:#a78bfa; color:#ddd6fe; }
   display:grid; grid-template-columns:1fr 1fr; gap:1rem;
 }
 @media (max-width:800px){ .compare-grid{ grid-template-columns:1fr; } }
+@media (max-width:620px){header{display:block}.pill{display:inline-block;margin-top:.75rem}dl{grid-template-columns:1fr;gap:.2rem}dd{margin-bottom:.6rem}.row.actions{gap:.5rem}}
 .compare article {
   background:rgba(15,23,42,.55); border:1px solid rgba(148,163,184,.2);
   border-radius:12px; padding:1rem;

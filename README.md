@@ -4,7 +4,7 @@
 Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/events/hacktoberfest-hack-day-pune-x-cloud-native-pune)
 
 > Paste a red CI log (or attach a screenshot) → get failing step, root cause, suggested fix, and copy-paste shell commands.  
-> Online: **Gemma 4**. Offline: **deterministic rules** so the demo never dies without a key.
+> Gemma-first: **Gemma 4** gets a hard **12-second** budget. Offline or on failure, deterministic rules keep the diagnosis available.
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Gemma%204-multimodal-purple)](#)
@@ -16,7 +16,7 @@ Built for [Hacktoberfest Hack Day Pune x Cloud Native Pune](https://www.mlh.com/
 
 | Prize | How Actions Nurse fits |
 | --- | --- |
-| **Best Use of Gemma 4** | Default model `gemma-4-26b-a4b-it` for log + screenshot triage; side-by-side **Rules vs Gemma** compare API/UI |
+| **Best Use of Gemma 4** | Default model `gemma-4-26b-a4b-it` for log + screenshot triage; 12-second bounded response and side-by-side **Rules vs Gemma** evidence view |
 | **Best Open-Source AI** | MIT · FastAPI · composite Action · Docker · offline rules · no vendor lock-in |
 
 Cloud-native angle: runs as a **composite GitHub Action** on failed workflows, or as a tiny FastAPI service / Docker container for local demos.
@@ -74,7 +74,7 @@ Or paste a log file:
     gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The Action writes a markdown report and sets `summary` / `engine` outputs for job summaries.
+The checked-in [example workflow](.github/workflows/actions-nurse.yml) includes the required `actions: read` permission and uploads the generated markdown report. The Action writes that report and sets `summary` / `engine` outputs for job summaries.
 
 ---
 
@@ -122,7 +122,7 @@ curl -s localhost:8787/api/fixtures
 - **Repo:** https://github.com/mangeshraut712/actions-nurse  
 - **License:** MIT  
 - **Demo:** local `uvicorn` or Docker; Action path for cloud-native judges  
-- **Models:** Gemma 4 first; falls back through sibling Gemma / Flash aliases if needed  
+- **Models:** Gemma 4 first; tries only compatible Gemma aliases within 12 seconds, then uses local rules
 - Full pitch: [`docs/MLH-SUBMISSION.md`](docs/MLH-SUBMISSION.md) · win checklist: [`docs/WIN-PLAN.md`](docs/WIN-PLAN.md)
 
 ---
