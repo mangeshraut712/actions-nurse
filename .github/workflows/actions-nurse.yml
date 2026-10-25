@@ -17,7 +17,7 @@ jobs:
       group: actions-nurse-${{ github.event.workflow_run.id }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Diagnose failed workflow
         uses: mangeshraut712/actions-nurse/action@main
         with:
@@ -25,7 +25,7 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           report-path: nurse-report.md
       - name: Upload nurse report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: actions-nurse-report
           path: nurse-report.md

@@ -63,7 +63,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: mangeshraut712/actions-nurse/action@main
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}  # optional; rules fallback
