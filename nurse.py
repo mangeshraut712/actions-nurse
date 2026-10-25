@@ -49,6 +49,8 @@ class TriageResult(BaseModel):
     patterns: list[str] = []
     fix_commands: list[str] = []
     model: str = ""
+    validation_status: str = "not_run"
+    validation_detail: str = ""
 
 
 RULES: list[tuple[str, dict[str, str]]] = [
@@ -167,6 +169,56 @@ def rule_triage(log: str) -> TriageResult:
     }, engine="rules")
 
 
+RULE_VALIDATION_TERMS = {
+    "Typecheck / tsc": {"typecheck", "typescript", "tsc", "compile", "export", "exports"},
+    "Unit tests / pytest": {"pytest", "test", "tests", "assertion", "assert"},
+    "Build / bundler": {"memory", "oom", "heap", "bundler", "build"},
+    "npm install": {"npm", "dependency", "dependencies", "install", "peer"},
+    "Runner filesystem": {"disk", "space", "filesystem", "enospc", "storage", "runner"},
+    "Checkout / repository access": {"checkout", "repository", "repositories", "repo", "authentication", "authenticate", "auth", "permission", "permissions", "token", "access", "git", "github"},
+}
+
+
+def validate_gemma_result(candidate: TriageResult, baseline: TriageResult) -> TriageResult:
+    """Cross-check Gemma's failure category against known deterministic signatures.
+
+    Rules cannot prove arbitrary model prose. They can confirm a known log signature,
+    or reject a proposal whose reported failure step omits that signature's category.
+    Unknown signatures remain clearly marked as unverified hypotheses.
+    """
+    if not baseline.patterns:
+        candidate.validation_status = "unverified"
+        candidate.validation_detail = "No known deterministic signature matched; review Gemma's diagnosis as a hypothesis."
+        return candidate
+
+    terms = RULE_VALIDATION_TERMS.get(baseline.failing_step, ())
+    proposal = set(re.findall(r"[a-z0-9]+", candidate.failing_step.casefold()))
+    if terms and proposal.intersection(terms):
+        candidate.validation_status = "confirmed"
+        candidate.validation_detail = f"Rules independently matched the {baseline.failing_step} signature in the log."
+        return candidate
+
+    candidate.validation_status = "overridden"
+    candidate.validation_detail = (
+        f"Gemma's failure-step category did not match the known {baseline.failing_step} signature; "
+        "the deterministic diagnosis is shown as the final result."
+    )
+    return candidate
+
+
+def final_triage(candidate: Optional[TriageResult], baseline: TriageResult) -> TriageResult:
+    if not candidate:
+        return baseline
+    checked = validate_gemma_result(candidate, baseline)
+    if checked.validation_status != "overridden":
+        return checked
+    baseline.validation_status = "overridden"
+    baseline.validation_detail = checked.validation_detail
+    baseline.summary = f"Rules overrode a conflicting Gemma proposal. {baseline.summary}"
+    baseline.model = checked.model
+    return baseline
+
+
 def gemma_models(model: str) -> list[str]:
     """Gemma only: requested model first, compatible aliases second."""
     models = [model]
@@ -215,7 +267,7 @@ def gemma_triage(log: str, model: str, image: Optional[tuple[str, bytes]] = None
             mime, raw = image
             parts.append({"inline_data": {"mime_type": mime, "data": base64.b64encode(raw).decode("ascii")}})
         try:
-            r = httpx.post(url, params={"key": key}, json={"contents": [{"parts": parts}]}, timeout=max(0.5, remaining))
+            r = httpx.post(url, params={"key": key}, json={"contents": [{"parts": parts}]}, timeout=remaining)
             if r.status_code == 200:
                 text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
                 data = parse_model_json(text)
@@ -257,7 +309,10 @@ def get_fixture(name: str) -> JSONResponse:
 
 @app.post("/api/triage", response_model=TriageResult)
 def triage(req: TriageRequest) -> TriageResult:
-    return rule_triage(req.log) if (RULES_ONLY or req.rules_only) else (gemma_triage(req.log, req.model) or rule_triage(req.log))
+    if RULES_ONLY or req.rules_only:
+        return rule_triage(req.log)
+    candidate = gemma_triage(req.log, req.model)
+    return final_triage(candidate, rule_triage(req.log))
 
 
 @app.post("/api/triage-image", response_model=TriageResult)
@@ -275,7 +330,7 @@ async def triage_image(
     use_rules = RULES_ONLY or rules_only
     result = None if use_rules else gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
     if result:
-        return result
+        return final_triage(result, rule_triage(log or "Screenshot supplied; no text log was pasted."))
     fallback = rule_triage(log or "screenshot uploaded without a usable Gemma response")
     fallback.summary = (
         "Rules-only mode is enabled; rules triage used the pasted log."
@@ -295,7 +350,8 @@ class CompareResult(BaseModel):
 def compare(req: TriageRequest) -> CompareResult:
     """Side-by-side rules vs Gemma — great for show-and-tell."""
     rules = rule_triage(req.log)
-    gemma = None if (RULES_ONLY or req.rules_only) else gemma_triage(req.log, req.model)
+    candidate = None if (RULES_ONLY or req.rules_only) else gemma_triage(req.log, req.model)
+    gemma = validate_gemma_result(candidate, rules.model_copy(deep=True)) if candidate else None
     return CompareResult(rules=rules, gemma=gemma)
 
 
@@ -314,7 +370,8 @@ async def compare_image(
         raise HTTPException(status_code=422, detail="image is empty")
     evidence = log or "Screenshot supplied; no text log was pasted."
     rules = rule_triage(evidence)
-    gemma = None if (RULES_ONLY or rules_only) else gemma_triage(evidence, model, (image.content_type or "image/png", raw))
+    candidate = None if (RULES_ONLY or rules_only) else gemma_triage(evidence, model, (image.content_type or "image/png", raw))
+    gemma = validate_gemma_result(candidate, rules.model_copy(deep=True)) if candidate else None
     return CompareResult(rules=rules, gemma=gemma)
 
 

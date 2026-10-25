@@ -45,6 +45,12 @@ function renderResult(data) {
   const engine = (data.engine || 'rules').toLowerCase();
   document.getElementById('engine').innerHTML =
     `<span class="badge badge-${engine}">${engine === 'gemma' ? 'Gemma 4' : 'Rules'}</span>`;
+  const validation = document.getElementById('validation');
+  const validationStatus = data.validation_status || 'not_run';
+  validation.textContent = data.validation_detail || (validationStatus === 'not_run'
+    ? 'No Gemma proposal returned; deterministic Rules result shown.'
+    : validationStatus);
+  validation.className = `validation-copy validation-${validationStatus}`;
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -109,11 +115,11 @@ async function boot() {
     healthEl.textContent = health.rules_only ? 'Rules-only demo' : (health.gemma_key ? 'Gemma-first · 12s fallback' : 'Rules ready · no key');
     healthEl.className = 'pill ok';
     if (health.rules_only) {
-      runtimeHint.textContent = 'Rules-only mode is active. Diagnoses use deterministic rules. Commands are suggestions only — review before running.';
+      runtimeHint.textContent = 'Rules-only mode is active. No Gemma request is made; deterministic rules diagnose from the log. Commands are suggestions only — review before running.';
     } else if (!health.gemma_key) {
-      runtimeHint.textContent = 'No Gemini API key is configured. Rules still diagnose logs; add a key to try Gemma 4 with a 12-second budget. Commands are suggestions only — review before running.';
+      runtimeHint.textContent = 'No Gemini API key is configured. Rules diagnose logs; add a key to try Gemma 4, then rules check known failure categories. Commands are suggestions only — review before running.';
     } else {
-      runtimeHint.textContent = 'Gemma 4 is attempted first with a 12-second budget. Deterministic rules are the reliable fallback. Commands are suggestions only — review before running.';
+      runtimeHint.textContent = 'Gemma 4 proposes first within a 12-second budget. Deterministic rules check known failure categories and override conflicts. Commands are suggestions only — review before running.';
     }
   } catch (err) {
     healthEl.textContent = 'API offline';
@@ -161,7 +167,7 @@ async function boot() {
 
   screenshotDemoBtn?.addEventListener('click', async () => {
     screenshotDemoBtn.disabled = true;
-    screenshotDemoBtn.textContent = 'Loading screenshot…';
+    screenshotDemoBtn.textContent = 'Preparing demo…';
     clearResults();
     try {
       const [imageRes, logRes] = await Promise.all([
@@ -178,13 +184,14 @@ async function boot() {
       const fixture = await logRes.json();
       logEl.value = fixture.log || '';
       showImage(file, 'Bundled red Actions screenshot — checkout permission failure');
-      setStatus('Loaded the multimodal demo: screenshot + checkout-auth log. Press “Triage with Gemma 4”.');
+      setStatus('Screenshot + checkout-auth fixture loaded. Running the multimodal comparison…');
       fixturesEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+      await runCompare({ auto: true });
     } catch (_) {
       setStatus('Could not load the bundled screenshot demo. You can still attach any CI screenshot.');
     } finally {
       screenshotDemoBtn.disabled = false;
-      screenshotDemoBtn.textContent = 'Load red screenshot demo';
+      screenshotDemoBtn.textContent = 'Run screenshot demo · 1 click';
     }
   });
 
@@ -243,7 +250,14 @@ async function boot() {
         data = await res.json();
       }
       renderResult(data);
-      setStatus(`${data.engine === 'gemma' ? 'Gemma 4 returned a diagnosis.' : 'Rules fallback returned a diagnosis.'} Review commands before running them.`);
+      const resultStatus = data.validation_status === 'overridden'
+        ? 'Rules overruled a conflicting Gemma category and selected the deterministic diagnosis.'
+        : data.engine === 'gemma'
+          ? data.validation_status === 'confirmed'
+            ? 'Gemma returned a diagnosis whose failure category matched a known Rules signature.'
+            : 'Gemma returned an unverified proposal; no known Rules signature matched.'
+          : 'Rules returned the deterministic diagnosis; no Gemma proposal was used.';
+      setStatus(`${resultStatus} Review commands before running them.`);
     } catch (err) {
       console.error(err);
       alert('Error triaging CI failure. Please check backend connection.');
@@ -253,10 +267,13 @@ async function boot() {
     }
   });
 
-  compareBtn.addEventListener('click', async () => {
+  compareBtn.addEventListener('click', () => runCompare());
+
+  async function runCompare({ auto = false } = {}) {
     const log = logEl.value.trim();
     if (!log) {
-      alert('Paste a log or pick a fixture first.');
+      if (auto) setStatus('The screenshot loaded, but its checkout-auth log was empty.');
+      else alert('Paste a log or pick a fixture first.');
       return;
     }
     compareBtn.disabled = true;
@@ -264,9 +281,9 @@ async function boot() {
     compareBtn.textContent = 'Comparing...';
     const file = fileInput?.files?.[0];
     if (runtimeHealth?.rules_only) {
-      setStatus('Rules-only runtime: returning the offline baseline. No Gemma request will be made.');
+      setStatus('Rules-only runtime: showing the deterministic baseline. No model request will be made.');
     } else if (!runtimeHealth?.gemma_key) {
-      setStatus('No Gemini API key is configured. Showing the rules baseline and an empty Gemma result.');
+      setStatus('No Gemini API key is configured. Showing the rules baseline; Gemma is skipped.');
     } else {
       setStatus(`Building a comparison from the CI log${file ? ' and attached screenshot' : ''}…`);
     }
@@ -305,6 +322,38 @@ async function boot() {
       document.getElementById('gemmaStep').textContent = g?.failing_step || '—';
       document.getElementById('gemmaCause').textContent = g?.root_cause || '—';
       document.getElementById('gemmaFix').textContent = g?.suggested_fix || '—';
+      const validationBanner = document.getElementById('validationBanner');
+      const validationStatus = g?.validation_status || 'not_run';
+      validationBanner.className = `validation-banner validation-${validationStatus}`;
+      validationBanner.textContent = g
+        ? g.validation_detail || 'Gemma returned a proposal; inspect it beside the deterministic baseline.'
+        : 'No Gemma proposal was returned, so the deterministic baseline is the available diagnosis.';
+      const skipReason = runtimeHealth?.rules_only
+        ? 'rules-only mode is enabled'
+        : !runtimeHealth?.gemma_key
+          ? 'no Gemini API key is configured'
+          : 'Gemma returned no result within the request budget';
+      document.getElementById('compareHeadline').textContent = g
+        ? 'Gemma proposes. Rules check known categories.'
+        : 'Rules stay ready when Gemma is skipped.';
+      document.getElementById('compareEyebrow').textContent = g
+        ? 'Evidence → proposal → deterministic check'
+        : 'Evidence → rules baseline → deterministic result';
+      document.getElementById('compareContext').textContent = g
+        ? `Rules establish the baseline from the log. Gemma received ${file ? 'that log plus the screenshot' : 'the same text log'}; its reported failure category is checked against known log signatures before single-result triage can accept it.`
+        : `Rules returned a deterministic baseline from the log. Gemma was skipped because ${skipReason}; no model proposal was validated.`;
+      document.getElementById('flowGemmaTitle').textContent = g ? 'Gemma proposal' : 'Gemma skipped';
+      document.getElementById('flowGemmaNote').textContent = g
+        ? `${file ? 'Log + screenshot' : 'Log only'}${g.model ? ` · ${g.model}` : ''}`
+        : skipReason;
+      document.getElementById('flowCheckTitle').textContent = g ? 'Rules check' : 'Rules result';
+      document.getElementById('flowCheckNote').textContent = g
+        ? validationStatus === 'confirmed'
+          ? 'Known category matched'
+          : validationStatus === 'overridden'
+            ? 'Conflict → Rules wins'
+            : 'No known match · unverified'
+        : 'Deterministic baseline';
       document.getElementById('gemmaInput').textContent = g
         ? `Gemma received ${file ? 'log + screenshot' : 'log only'}${g.model ? ` · ${g.model}` : ''}`
         : runtimeHealth?.rules_only
@@ -313,7 +362,7 @@ async function boot() {
             ? 'Skipped · no API key'
             : 'No Gemma response returned';
       setStatus(g
-        ? `Comparison ready: rules used the log; Gemma received ${file ? 'the log and screenshot' : 'the log only'}.`
+        ? `Comparison ready: Rules checked the log signature; Gemma received ${file ? 'the log and screenshot' : 'the log only'}.`
         : runtimeHealth?.rules_only
           ? 'Rules baseline ready. The runtime is forced to rules-only mode, so no Gemma request was made.'
           : !runtimeHealth?.gemma_key
@@ -322,12 +371,13 @@ async function boot() {
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);
-      alert('Compare failed.');
+      if (auto) setStatus('The screenshot fixture loaded, but comparison failed. You can retry with Compare Rules vs Gemma.');
+      else alert('Compare failed.');
     } finally {
       compareBtn.disabled = false;
       compareBtn.textContent = original;
     }
-  });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', boot);

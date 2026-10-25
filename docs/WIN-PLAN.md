@@ -19,10 +19,10 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - [ ] MLH submit both categories (~5:00 PM IST)
 
 ## Demo story (2–3 min)
-1. **Load red screenshot demo** → matching `checkout-auth` log + screenshot enter the multimodal path
-2. Show structured diagnosis and visibly labeled Gemma/rules provenance
-3. **Compare Rules vs Gemma** → make the model contribution legible
-4. Show composite Action + Docker configuration as the cloud-native OSS path
+1. **Run screenshot demo · 1 click** → attach the bundled red screenshot and matching `checkout-auth` log, then open the compare view
+2. Gemma proposes from text + image; deterministic rules check the reported failure category, confirm a known category, override a conflict, or mark an unknown proposal unverified
+3. Show the Rules baseline, Gemma input provenance, and transparent skipped-model state when running the public rules-only demo
+4. Show the composite Action + report artifact as the cloud-native OSS path
 
 ## Crosscheck (2026-10-25 ~3:55 PM IST)
 - Repo cwd: `/Users/mangeshraut/codex-work/actions-nurse` only
@@ -40,3 +40,11 @@ Deadline: Oct 25 2026 5:00 PM IST. Show-and-tell 2–3 min. Polish window throug
 - `docker compose build` rechecked; Compose plugin is unavailable, and the Docker daemon is not reachable. See [`CROSSCHECK.md`](CROSSCHECK.md).
 - Browser interaction confirmed screenshot-to-compare and fixture-switch behavior; header status badge sizing was corrected.
 - Replaced the dark blue app surface with a warm light Hacktoberfest palette and verified it in the browser.
+
+## Judge polish follow-up (2026-10-25 ~4:30 PM IST)
+- Added Gemma failure-category checking to the web triage, compare routes, and Action CLI. Known conflicts select the deterministic diagnosis; unknown signatures remain explicitly unverified.
+- Reworked the compare hero to explain evidence → proposal → rules check, with dynamic copy for forced rules-only mode.
+- **Run screenshot demo · 1 click** now loads the screenshot + `checkout-auth` fixture and executes the multimodal comparison in one action.
+- Tightened README prize mapping, both paste-ready MLH entries, and the timed demo script. The public tunnel is still temporary and rules-only; no live Gemma call was claimed.
+- Verification: `NURSE_RULES_ONLY=true ./scripts/smoke.sh` passed; all five Action fixtures and mocked category-check scenarios passed; compile, JavaScript syntax, and diff whitespace checks passed. See [`CROSSCHECK.md`](CROSSCHECK.md).
+- `docker compose build` remains blocked because this host has no `docker compose` subcommand; no image was produced.

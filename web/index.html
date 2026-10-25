@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Actions Nurse · Gemma 4 · Hack Day Pune</title>
-  <link rel="stylesheet" href="/static/styles.css?v=3" />
+  <link rel="stylesheet" href="/static/styles.css?v=4" />
 </head>
 <body>
   <header>
@@ -27,7 +27,7 @@
           <label>Reproducible red-CI fixtures</label>
           <div id="fixtures" class="chips"></div>
         </div>
-        <button id="loadScreenshotDemo" class="screenshot-demo" type="button">Load red screenshot demo</button>
+        <button id="loadScreenshotDemo" class="screenshot-demo" type="button">Run screenshot demo · 1 click</button>
       </div>
       <label for="log">Failed CI log</label>
       <textarea id="log" rows="14" placeholder="Paste a failed GitHub Actions log…"></textarea>
@@ -54,11 +54,25 @@
         <dt>Fix commands</dt><dd id="cmds"></dd>
         <dt>Confidence</dt><dd id="conf"></dd>
         <dt>Engine</dt><dd id="engine"></dd>
+        <dt>Rules check</dt><dd id="validation" class="validation-copy"></dd>
       </dl>
     </section>
     <section class="panel compare" id="comparePanel" hidden>
+      <div class="compare-hero">
+        <div class="compare-hero-copy">
+          <span class="eyebrow" id="compareEyebrow">Evidence → proposal → deterministic check</span>
+          <h2 id="compareHeadline">Gemma proposes. Rules check known categories.</h2>
+          <p id="compareContext">The log anchors the baseline. An attached screenshot is additional context for Gemma.</p>
+        </div>
+        <ol class="compare-flow" aria-label="Triage flow">
+          <li><span>01</span><div><strong>Rules baseline</strong><small>Known log signature</small></div></li>
+          <li><span>02</span><div><strong id="flowGemmaTitle">Gemma proposal</strong><small id="flowGemmaNote">Text + screenshot</small></div></li>
+          <li><span>03</span><div><strong id="flowCheckTitle">Rules check</strong><small id="flowCheckNote">Confirm or override</small></div></li>
+        </ol>
+      </div>
+      <p id="validationBanner" class="validation-banner" role="status"></p>
       <div class="section-heading">
-        <div><h2>Rules vs Gemma 4</h2><p>Rules use the text log. When Gemma runs, it receives that log and any attached screenshot. Each result is labeled with its source.</p></div>
+        <div><h3>Same incident, two views</h3><p>Review the deterministic evidence beside Gemma’s diagnosis and input provenance.</p></div>
         <span class="compare-label">Judge proof surface</span>
       </div>
       <div class="compare-grid">
@@ -72,7 +86,7 @@
           </dl>
         </article>
         <article class="gemma-card">
-          <div class="card-title"><h3>Gemma 4 reasoning</h3><span id="gemmaInput">Input provenance appears here</span></div>
+          <div class="card-title"><h3>Gemma 4 proposal</h3><span id="gemmaInput">Input provenance appears here</span></div>
           <p id="gemmaSummary"></p>
           <dl>
             <dt>Step</dt><dd id="gemmaStep"></dd>
@@ -84,6 +98,6 @@
     </section>
   </main>
   <footer>Open-weight <strong>Gemma 4</strong> via Gemini API · deterministic rules fallback · composite GitHub Action · MIT</footer>
-  <script src="/static/app.js?v=4"></script>
+  <script src="/static/app.js?v=7"></script>
 </body>
 </html>

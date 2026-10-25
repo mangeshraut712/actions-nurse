@@ -85,6 +85,50 @@ def rule_triage(log: str) -> dict:
     }
 
 
+RULE_VALIDATION_TERMS = {
+    "Typecheck / tsc": {"typecheck", "typescript", "tsc", "compile", "export", "exports"},
+    "Unit tests / pytest": {"pytest", "test", "tests", "assertion", "assert"},
+    "Build / bundler": {"memory", "oom", "heap", "bundler", "build"},
+    "npm install": {"npm", "dependency", "dependencies", "install", "peer"},
+    "Runner filesystem": {"disk", "space", "filesystem", "enospc", "storage", "runner"},
+    "Checkout / repository access": {"checkout", "repository", "repositories", "repo", "authentication", "authenticate", "auth", "permission", "permissions", "token", "access", "git", "github"},
+}
+
+
+def validate_gemma_result(candidate: dict, baseline: dict) -> dict:
+    """Use known log signatures to confirm or override Gemma's failure category."""
+    if not baseline.get("patterns"):
+        candidate["validation_status"] = "unverified"
+        candidate["validation_detail"] = "No known deterministic signature matched; review Gemma's diagnosis as a hypothesis."
+        return candidate
+    terms = RULE_VALIDATION_TERMS.get(baseline.get("failing_step", ""), ())
+    proposal = set(re.findall(r"[a-z0-9]+", str(candidate.get("failing_step", "")).casefold()))
+    if terms and proposal.intersection(terms):
+        candidate["validation_status"] = "confirmed"
+        candidate["validation_detail"] = f"Rules independently matched the {baseline['failing_step']} signature in the log."
+        return candidate
+    candidate["validation_status"] = "overridden"
+    candidate["validation_detail"] = (
+        f"Gemma's failure-step category did not match the known {baseline['failing_step']} signature; "
+        "the deterministic diagnosis is shown as the final result."
+    )
+    return candidate
+
+
+def final_triage(candidate: dict | None, baseline: dict) -> dict:
+    if not candidate:
+        return baseline
+    checked = validate_gemma_result(candidate, baseline)
+    if checked.get("validation_status") != "overridden":
+        return checked
+    result = dict(baseline)
+    result["model"] = checked.get("model", "")
+    result["validation_status"] = "overridden"
+    result["validation_detail"] = checked["validation_detail"]
+    result["summary"] = f"Rules overrode a conflicting Gemma proposal. {baseline['summary']}"
+    return result
+
+
 def gemma_triage(log: str, model: str, key: str) -> dict | None:
     """Gemma-first triage with a total 12-second budget before rules."""
     prompt = (
@@ -110,7 +154,7 @@ def gemma_triage(log: str, model: str, key: str) -> dict | None:
         body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=max(1, remaining)) as resp:
+            with urllib.request.urlopen(req, timeout=remaining) as resp:
                 data = json.loads(resp.read().decode())
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             try:
@@ -147,6 +191,8 @@ def to_markdown(result: dict) -> str:
     return f"""# 🩺 Actions Nurse report
 
 **Engine:** `{result.get('engine')}` · **Confidence:** `{result.get('confidence')}`
+
+**Rules check:** `{result.get('validation_status', 'not_run')}` — {result.get('validation_detail') or 'No Gemma proposal was returned for validation.'}
 
 ## Summary
 {result.get('summary')}
@@ -205,7 +251,9 @@ def main() -> int:
         print("No log available (set NURSE_LOG_PATH or NURSE_WORKFLOW_RUN_ID)", file=sys.stderr)
         return 1
 
-    result = (gemma_triage(log, model, key) if key and not rules_only else None) or rule_triage(log)
+    candidate = gemma_triage(log, model, key) if key and not rules_only else None
+    baseline = rule_triage(log)
+    result = final_triage(candidate, baseline)
     out_path.write_text(to_markdown(result))
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
