@@ -28,6 +28,13 @@ Deadline: Oct 25 2026 5:15 PM IST (extended). Freeze ready by 5:10 PM IST. Show-
 
 The Temporal/Gemma example [Quorum](https://dev.to/arqamwd/we-should-go-out-this-weekend-i-built-a-discord-member-that-holds-the-clock-until-were-outside-10ek) leads with durable group planning: votes, scheduled checks, retries, and restart recovery. Actions Nurse solves a different, immediate problem: after CI fails, turn a log and screenshot into a diagnosis a developer can inspect. Lead with the one-click multimodal evidence, the independent Rules category check, and the key-free fallback. Do not imply that Actions Nurse provides Temporal-style orchestration or durable retries.
 
+## Final readiness checkpoint — 2026-10-25 17:00 IST
+
+- Implementation commit `fc13337` is pushed; [CI run 40189058584](https://github.com/mangeshraut712/actions-nurse/actions/runs/40189058584) passed the Docker build and full workflow smoke.
+- Local `NURSE_RULES_ONLY=true ./scripts/smoke.sh`, all five Action fixtures, the public rules-only UI, and the local multimodal Gemma UI passed.
+- The public tunnel does not expose Gemma availability; the key-backed path stays on loopback.
+- Freeze target remains 5:10 PM IST; submit both checked categories by 5:15 PM IST.
+
 **Live Gemma endpoint for judges:** `http://127.0.0.1:8788` with `GEMINI_API_KEY` configured. The public tunnel at `https://mini-deleted-wed-week.trycloudflare.com` remains rules-only on port 8787.
 
 ## Crosscheck (2026-10-25 ~3:55 PM IST)

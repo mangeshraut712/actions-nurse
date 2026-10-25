@@ -40,3 +40,11 @@ Scope: `/Users/mangeshraut/codex-work/actions-nurse` only. These are the submiss
 - **Compare hero — PASS in browser.** The headline now reports the actual outcome (confirmed, conflict, or unverified), the flow labels whether Rules found a signature, and shorter copy distinguishes log-only Rules from log + screenshot Gemma. The unknown-signature UI path visibly says `No known signature` and `Gemma skipped` on the public runtime.
 - **Submission story — UPDATED.** The paste-ready category entries now lead with the narrow first-response CI problem, one-click multimodal evidence, deterministic category check, and the self-hostable Action. The presenter notes distinguish this immediate diagnosis flow from the Temporal/Gemma sample's durable scheduling and retries without claiming orchestration features.
 - **Local checks — PASS.** Seven unit tests, rules-only HTTP smoke (`SMOKE_OK`), all five Action fixtures, Python compile, `node --check`, `bash -n`, YAML parsing, and `git diff --check` passed. The matching main-branch CI run is the final remote release gate.
+
+## Final gate — 2026-10-25 17:00 IST
+
+- **GitHub CI — PASS.** [Run 40189058584](https://github.com/mangeshraut712/actions-nurse/actions/runs/40189058584) passed on implementation commit `fc13337` using Ubuntu 24.04: seven unit tests, five Action fixtures, Python/JavaScript checks, Docker Compose build, container health, bundled screenshot route, and HTTP smoke.
+- **Live Gemma — PASS.** The local one-click demo sent the bundled screenshot + `checkout-auth` log to Gemma and showed a confirmed category. Its credential advice used a target-repository-scoped fine-grained token/GitHub App with read-only contents access.
+- **Public demo — PASS, temporary.** The Cloudflare tunnel serves the rules-only UI and screenshot asset; health reports `gemma_key: false`. The key-backed Gemma runtime remains loopback-only at `:8788`.
+- **Local Docker — UNAVAILABLE.** This workstation still lacks `docker compose`; the image build and container smoke passed on GitHub's runner.
+- **Submission pack — READY.** README, both paste-ready MLH category entries, 2:30 demo script, judge positioning note, and this crosscheck are updated.
