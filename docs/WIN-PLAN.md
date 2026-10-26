@@ -1,4 +1,8 @@
-# Submission readiness
+# Historical: previous submission readiness notes
+
+> These notes describe the earlier Hack Day Pune entry and may contain expired
+> links or runtime observations. For the Open Agent Hackathon 2026 Wildcard
+> demo, use the [README](../README.md) and [current demo script](demo-script.md).
 
 Updated 25 October 2026. This file tracks the evidence and presentation for the two target categories; it does not record an award or confirm portal submission.
 

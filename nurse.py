@@ -1,4 +1,4 @@
-"""Actions Nurse — Gemma 4 GitHub Actions triage for Hack Day Pune."""
+"""Actions Nurse — GitHub Actions triage with Gemma, H-MEM, and Zetaris."""
 from __future__ import annotations
 
 import base64
@@ -15,13 +15,34 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from activity_log import activity_status, append_activity, input_fingerprint, latest_activity
+from integrations.zetaris import (
+    preflight as zetaris_preflight,
+    query_ci_evidence,
+    status as zetaris_status,
+)
+from memory_bridge import (
+    ask as hmem_ask,
+    audit as hmem_audit,
+    remember as hmem_remember,
+    seed as hmem_seed,
+    status as hmem_status,
+)
+
+ROOT = Path(__file__).resolve().parent
+
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
+    from dotenv import dotenv_values
+
+    # Zetaris owns its own explicit `.env` → `.env.local` → shell precedence.
+    # Do not pre-populate its keys here, otherwise an `.env` value would appear
+    # indistinguishable from an explicitly supplied process environment value.
+    for _key, _value in dotenv_values(ROOT / ".env").items():
+        if _key and _value is not None and not _key.startswith("ZETARIS_"):
+            os.environ.setdefault(_key, _value)
 except Exception:
     pass
 
-ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures"
 MAX_LOG_CHARS = 12_000
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -53,6 +74,23 @@ class TriageResult(BaseModel):
     model: str = ""
     validation_status: str = "not_run"
     validation_detail: str = ""
+    # Sponsor integrations enrich a diagnosis but never replace its Rules/Gemma
+    # fields. Empty or setup-required payloads are intentional offline states.
+    memory: dict[str, Any] = Field(default_factory=dict)
+    zetaris: dict[str, Any] = Field(default_factory=dict)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    activity: dict[str, Any] = Field(default_factory=dict)
+
+
+class MemoryAskRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+
+
+class MemoryRememberRequest(BaseModel):
+    failing_step: str = Field(..., min_length=1, max_length=200)
+    root_cause: str = Field(..., min_length=1, max_length=800)
+    patterns: list[str] = Field(default_factory=list)
+    fixture: str = Field(default="manual", max_length=160)
 
 
 RULES: list[tuple[str, dict[str, str]]] = [
@@ -169,6 +207,235 @@ def rule_triage(log: str) -> TriageResult:
         "suggested_fix": "Start with the first Error: line, fix that root cause, and re-run the job.",
         "confidence": "low",
     }, engine="rules")
+
+
+def fixture_name_for_log(log: str) -> str:
+    """Return a tracked fixture name only when the supplied log exactly matches.
+
+    This lets H-MEM provenance be useful in the demo without retaining a
+    caller's arbitrary log text as a fake fixture name.
+    """
+    normalized = log.strip()
+    for fixture in FIXTURES.glob("*.txt"):
+        try:
+            if fixture.read_text(encoding="utf-8", errors="replace").strip() == normalized:
+                return fixture.name
+        except OSError:
+            continue
+    return ""
+
+
+def _memory_ids(payload: dict[str, Any]) -> list[str]:
+    """Extract stable H-MEM IDs from either recall or mining output."""
+    ids = payload.get("memory_ids")
+    if isinstance(ids, list):
+        return [clean_text(item, 160) for item in ids if clean_text(item, 160)][:8]
+    stored = payload.get("stored")
+    if isinstance(stored, list):
+        return [clean_text(item.get("id"), 160) for item in stored if isinstance(item, dict) and item.get("id")][:8]
+    return []
+
+
+def _recall_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Bound memory output for API clients while retaining ID provenance."""
+    rows = payload.get("memories")
+    if not isinstance(rows, list):
+        return []
+    compact: list[dict[str, Any]] = []
+    for row in rows[:3]:
+        if not isinstance(row, dict):
+            continue
+        compact.append({
+            "id": clean_text(row.get("id"), 160),
+            "content": clean_text(row.get("content"), 800),
+            "relevance": row.get("relevance"),
+            "source": clean_text(row.get("source"), 200),
+        })
+    return compact
+
+
+def _safe_persistent_step(baseline: TriageResult) -> str:
+    """Keep user-derived unknown step text out of durable integrations/traces."""
+    return baseline.failing_step if baseline.patterns else "Unrecognized CI failure"
+
+
+def _recall_before_diagnosis(baseline: TriageResult) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Ask H-MEM for analogous incidents before optional Gemma work begins."""
+    try:
+        memory_state = hmem_status()
+    except Exception as exc:
+        logger.warning("H-MEM readiness check failed (%s)", type(exc).__name__)
+        memory_state = {"ready": False, "mode": "unavailable", "reason": type(exc).__name__}
+    if not memory_state.get("ready"):
+        return memory_state, {"ok": False, **memory_state}
+    # For an unknown signature, avoid feeding a user-derived step into the
+    # persistent store. Known Rules categories are controlled application text.
+    query_step = _safe_persistent_step(baseline)
+    try:
+        recall = hmem_ask(f"Similar GitHub Actions failure: {query_step}. {baseline.root_cause}")
+    except Exception as exc:
+        logger.warning("H-MEM recall failed (%s)", type(exc).__name__)
+        recall = {"ok": False, "mode": "unavailable", "reason": type(exc).__name__}
+    return memory_state, recall
+
+
+def _sponsor_enrichment(
+    result: TriageResult,
+    baseline: TriageResult,
+    log: str,
+    *,
+    gemma_state: str,
+    route: str,
+    memory_state: dict[str, Any],
+    recall: dict[str, Any],
+) -> TriageResult:
+    """Attach optional H-MEM and Zetaris evidence without blocking triage.
+
+    Rules and Gemma remain the diagnosis engines. Sponsor failures are recorded
+    as clearly labelled availability states, never promoted into a root cause.
+    """
+    if baseline.patterns and not result.patterns:
+        # A confirmed Gemma proposal still benefits from showing which
+        # deterministic signature was independently observed.
+        result.patterns = list(baseline.patterns)
+
+    fixture = fixture_name_for_log(log)
+    persistent_step = _safe_persistent_step(baseline)
+    # Rule payloads are controlled application text. Do not persist a model's
+    # prose or an unknown log-derived step into H-MEM without a user opting in.
+    persistent_cause = baseline.root_cause
+    # Recall was intentionally performed before the diagnosis/model branch;
+    # only the newly completed diagnosis is persisted at this point.
+    if memory_state.get("ready"):
+        try:
+            remembered = hmem_remember({
+                "failing_step": persistent_step,
+                "root_cause": persistent_cause,
+                "patterns": baseline.patterns,
+                "fixture": fixture,
+            })
+        except Exception as exc:
+            logger.warning("H-MEM remember failed (%s)", type(exc).__name__)
+            remembered = {"ok": False, "mode": "unavailable", "reason": type(exc).__name__}
+    else:
+        recall = {"ok": False, **memory_state}
+        remembered = {"ok": False, **memory_state}
+
+    recall_ids = _memory_ids(recall)
+    remembered_ids = _memory_ids(remembered)
+    result.memory = {
+        "mode": "hmem" if recall.get("ok") else str(recall.get("mode", "unavailable")),
+        "ready": bool(memory_state.get("ready")),
+        "engine_source": recall.get("engine_source") or remembered.get("engine_source") or memory_state.get("engine_source"),
+        "recall_service": recall.get("service"),
+        "remember_service": remembered.get("service"),
+        "recall": _recall_rows(recall),
+        "recall_ids": recall_ids,
+        "remembered_ids": remembered_ids,
+        "reason": recall.get("reason") or recall.get("error"),
+    }
+
+    try:
+        zetaris = query_ci_evidence(persistent_step, baseline.patterns)
+    except Exception as exc:  # Integration evidence must never break CI triage.
+        logger.warning("Zetaris evidence lookup failed (%s)", type(exc).__name__)
+        zetaris = {
+            "mode": "unavailable",
+            "source": "not_queried",
+            "reason": type(exc).__name__,
+            "failing_step": persistent_step,
+            "patterns": baseline.patterns,
+        }
+    result.zetaris = zetaris
+    raw_evidence = zetaris.get("result") if isinstance(zetaris, dict) else {}
+    if not isinstance(raw_evidence, dict):
+        raw_evidence = {}
+    result.evidence = [{
+        "provider": "Zetaris Lightning SQL",
+        "mode": zetaris.get("mode"),
+        "source": zetaris.get("source"),
+        "fixture": raw_evidence.get("fixture"),
+        "row_count": raw_evidence.get("row_count"),
+        "notice": raw_evidence.get("notice"),
+    }]
+
+    try:
+        activity = append_activity(
+            "triage",
+            why="Diagnose a failed GitHub Actions log and attach prior-memory and read-only CI evidence.",
+            route=route,
+            input=input_fingerprint(log),
+            fixture=fixture or None,
+            rules={"matched_patterns": baseline.patterns, "failing_step": persistent_step},
+            gemma={"state": gemma_state, "final_engine": result.engine},
+            zetaris={
+                "mode": zetaris.get("mode"),
+                "source": zetaris.get("source"),
+                "fixture": raw_evidence.get("fixture"),
+            },
+            hmem={
+                "ready": bool(memory_state.get("ready")),
+                "engine_source": result.memory.get("engine_source"),
+                "ask_ids": recall_ids,
+                "remember_ids": remembered_ids,
+            },
+            steps=[
+                {"tool": "Rules", "outcome": "matched" if baseline.patterns else "no_known_match"},
+                {"tool": "H-MEM MemoryRetrievalService", "outcome": recall.get("service") or recall.get("mode")},
+                {"tool": "Gemma", "outcome": gemma_state},
+                {"tool": "Zetaris Lightning SQL", "outcome": zetaris.get("mode")},
+                {"tool": "H-MEM MemoryMiningService", "outcome": remembered.get("service") or remembered.get("mode")},
+            ],
+            final={"engine": result.engine, "failing_step": persistent_step, "validation": result.validation_status},
+        )
+        result.activity = {
+            "id": activity["id"],
+            "timestamp": activity["timestamp"],
+            "path": activity_status()["path"],
+        }
+    except OSError as exc:
+        logger.warning("Activity logging failed (%s)", type(exc).__name__)
+        result.activity = {"status": "unavailable"}
+    return result
+
+
+def enriched_triage(
+    log: str,
+    model: str,
+    *,
+    use_rules: bool,
+    route: str,
+    image: Optional[tuple[str, bytes]] = None,
+    unavailable_summary: str = "",
+) -> TriageResult:
+    """Run existing diagnosis logic, then add optional sponsor evidence."""
+    baseline = rule_triage(log)
+    # This is deliberately before the Gemma branch: previous, corroborating
+    # incidents are available in the response even when the model is skipped.
+    memory_state, recall = _recall_before_diagnosis(baseline)
+    has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    candidate: Optional[TriageResult]
+    if use_rules:
+        candidate = None
+        gemma_state = "skipped_rules_only"
+    elif not has_key:
+        candidate = None
+        gemma_state = "skipped_no_key"
+    else:
+        candidate = gemma_triage(log, model, image)
+        gemma_state = "attempted_success" if candidate else "attempted_no_result"
+    result = final_triage(candidate, baseline)
+    if unavailable_summary and candidate is None:
+        result.summary = unavailable_summary
+    return _sponsor_enrichment(
+        result,
+        baseline,
+        log,
+        gemma_state=gemma_state,
+        route=route,
+        memory_state=memory_state,
+        recall=recall,
+    )
 
 
 RULE_VALIDATION_TERMS = {
@@ -362,13 +629,119 @@ def index() -> FileResponse:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     gemma_available = not RULES_ONLY and bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    try:
+        zetaris = zetaris_status()
+    except Exception as exc:
+        logger.warning("Zetaris status check failed (%s)", type(exc).__name__)
+        zetaris = {"mode": "unavailable", "reason": type(exc).__name__}
+    try:
+        hmem = hmem_status()
+    except Exception as exc:
+        logger.warning("H-MEM status check failed (%s)", type(exc).__name__)
+        hmem = {"ready": False, "mode": "unavailable", "reason": type(exc).__name__}
     return {
         "ok": True,
         "gemma_key": gemma_available,
         "rules_only": RULES_ONLY,
         "gemma_budget_seconds": GEMMA_BUDGET_SECONDS,
-        "event": "Hacktoberfest Hack Day Pune x Cloud Native Pune",
+        "zetaris": zetaris,
+        "hmem": hmem,
+        "activity": activity_status(),
+        "event": "Open Agent Hackathon 2026 Wildcard [Tinkerer]",
     }
+
+
+@app.get("/api/zetaris/preflight")
+def zetaris_preflight_endpoint() -> dict[str, Any]:
+    """Run only Zetaris' two documented read-only connection checks."""
+    result = zetaris_preflight()
+    try:
+        append_activity(
+            "zetaris_preflight",
+            why="Verify Zetaris access using the two documented read-only Lightning SQL checks.",
+            zetaris={"mode": result.get("mode"), "read_only": result.get("read_only")},
+        )
+    except OSError:
+        pass
+    return result
+
+
+@app.post("/api/memory/ask")
+def memory_ask_endpoint(req: MemoryAskRequest) -> dict[str, Any]:
+    """Expose real H-MEM recall for a live demo without a fake fallback."""
+    result = hmem_ask(req.query)
+    try:
+        append_activity(
+            "memory_ask",
+            why="Retrieve similar prior CI diagnoses through H-MEM.",
+            input=input_fingerprint(req.query),
+            hmem={
+                "ok": result.get("ok"),
+                "engine_source": result.get("engine_source"),
+                "service": result.get("service"),
+                "ask_ids": _memory_ids(result),
+            },
+        )
+    except OSError:
+        pass
+    return result
+
+
+@app.post("/api/memory/remember")
+def memory_remember_endpoint(req: MemoryRememberRequest) -> dict[str, Any]:
+    """Store a manual diagnosis through H-MEM's MemoryMiningService."""
+    payload = req.model_dump()
+    # Fixture is caller-controlled here, so do not make it a durable trace or
+    # provenance label. The caller's diagnosis is still redacted by the bridge.
+    payload["fixture"] = "manual"
+    result = hmem_remember(payload)
+    try:
+        append_activity(
+            "memory_remember",
+            why="Persist a manually supplied CI diagnosis through H-MEM mining.",
+            fixture="manual",
+            hmem={
+                "ok": result.get("ok"),
+                "engine_source": result.get("engine_source"),
+                "service": result.get("service"),
+                "remember_ids": _memory_ids(result),
+            },
+        )
+    except OSError:
+        pass
+    return result
+
+
+@app.get("/api/memory/audit/{memory_id}")
+def memory_audit_endpoint(memory_id: str) -> dict[str, Any]:
+    """Return H-MEM's append-only Trust Ledger history for one memory."""
+    return hmem_audit(memory_id)
+
+
+@app.post("/api/memory/seed")
+def memory_seed_endpoint() -> dict[str, Any]:
+    """Load the small tracked CI fixture memories through real H-MEM mining."""
+    result = hmem_seed()
+    try:
+        append_activity(
+            "memory_seed",
+            why="Load the tracked Actions Nurse fixture diagnoses into H-MEM for the demo.",
+            hmem={
+                "ok": result.get("ok"),
+                "engine_source": result.get("engine_source"),
+                "service": result.get("service"),
+                "remember_ids": _memory_ids(result),
+            },
+        )
+    except OSError:
+        pass
+    return result
+
+
+@app.get("/api/activity/latest")
+def activity_latest(limit: int = 20) -> dict[str, Any]:
+    """Show the recent append-only, sanitised operational trace."""
+    return {"activity": activity_status(), "events": latest_activity(limit)}
 
 
 @app.get("/api/fixtures")
@@ -386,10 +759,12 @@ def get_fixture(name: str) -> JSONResponse:
 
 @app.post("/api/triage", response_model=TriageResult)
 def triage(req: TriageRequest) -> TriageResult:
-    if RULES_ONLY or req.rules_only:
-        return rule_triage(req.log)
-    candidate = gemma_triage(req.log, req.model)
-    return final_triage(candidate, rule_triage(req.log))
+    return enriched_triage(
+        req.log,
+        req.model,
+        use_rules=RULES_ONLY or req.rules_only,
+        route="triage",
+    )
 
 
 @app.post("/api/triage-image", response_model=TriageResult)
@@ -405,16 +780,20 @@ async def triage_image(
     if not raw:
         raise HTTPException(status_code=422, detail="image is empty")
     use_rules = RULES_ONLY or rules_only
-    result = None if use_rules else gemma_triage(log or "Screenshot supplied; no text log was pasted.", model, (image.content_type or "image/png", raw))
-    if result:
-        return final_triage(result, rule_triage(log or "Screenshot supplied; no text log was pasted."))
-    fallback = rule_triage(log or "screenshot uploaded without a usable Gemma response")
-    fallback.summary = (
+    evidence = log or "Screenshot supplied; no text log was pasted."
+    fallback_summary = (
         "Rules-only mode is enabled; rules triage used the pasted log."
         if use_rules
         else f"Gemma was unavailable within {GEMMA_BUDGET_SECONDS} seconds; rules triage used the pasted log."
     )
-    return fallback
+    return enriched_triage(
+        evidence,
+        model,
+        use_rules=use_rules,
+        route="triage_image",
+        image=(image.content_type or "image/png", raw),
+        unavailable_summary=fallback_summary,
+    )
 
 
 

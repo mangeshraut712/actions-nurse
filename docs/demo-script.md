@@ -1,47 +1,75 @@
-# Judge demo · 2:30
+# Judge demo · 90 seconds
 
-## Before presenting
+The reliable route is deliberately key-free: Rules-only triage, H-MEM installed locally, and Zetaris fixture mode. If live Zetaris credentials are configured, say so and show the `live` mode; otherwise call the fixture exactly what it is.
 
-For the Gemma path, start a local server with `GEMINI_API_KEY` available and `NURSE_RULES_ONLY=false`. The public [Cloudflare quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) is temporary and currently forced to Rules-only mode. It is useful for the interface and key-free fallback, but it cannot demonstrate a live model call. Keep the key-backed server on loopback.
+## Before the clock starts
 
-To reproduce locally after installing [`requirements.txt`](../requirements.txt):
+In one terminal:
 
 ```bash
-GEMINI_API_KEY=your-key NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
+cd meterless && npm install && npm run setup && npm run memory -- seed && cd ..
+NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
-Open `http://127.0.0.1:8787`. If no key is available, use the public Rules-only demo and say so directly.
+In a second terminal, keep this command ready:
 
-## 0:00–0:20 · Problem and evidence
+```bash
+NURSE_RULES_ONLY=true ./scripts/smoke_agentathon.sh
+```
 
-**Show:** Actions Nurse’s light Hacktoberfest interface and its runtime status.
+Open <http://127.0.0.1:8787> or show the terminal output. Do not claim a Gemini or Zetaris cloud call unless the response mode says it actually happened.
 
-> “When a GitHub Actions run fails, a developer has to find the useful signal in the log. Actions Nurse turns that first look into a reviewable diagnosis. This local run has Gemma enabled; the public tunnel is Rules-only.”
+## 0:00–0:12 · The promise
 
-## 0:20–0:55 · One-click screenshot fixture
+**Show:** the web app title or the smoke command header.
 
-**Action:** Click **Run screenshot demo · 1 click**. It loads `checkout-auth.txt` and `red-actions-permission-failure.png`, then runs the comparison.
+> “Actions Nurse triages failed GitHub Actions, explains likely root cause, remembers past failures. It is a first-response tool: it explains and records; it does not execute a fix.”
 
-> “The app pairs one known permission failure log with its screenshot. In this Gemma-enabled run, Gemma sees both. The deterministic Rules baseline sees the log.”
+## 0:12–0:30 · Triage an actual red fixture
 
-If the model is unavailable, use this line:
+**Show:** `npm-typecheck.txt` in the browser fixture picker, then click triage; or show the smoke output for its HTTP triage request.
 
-> “Gemma did not return within the request budget, so this run shows the Rules baseline. The interface labels the skipped proposal explicitly.”
+> “This typecheck failed because imports refer to exports that no longer exist. Rules recognizes the log signature locally, so this diagnosis is reproducible even without a model key. Gemma remains available as the optional explanatory path, with Rules checking known categories.”
 
-## 0:55–1:30 · Compare the result
+Point to the failing step and the suggested local `npm run typecheck` check. Do not claim that the app executed it.
 
-**Show:** The Rules baseline, Gemma card, input provenance, and category-check banner.
+## 0:30–0:45 · Zetaris evidence, honestly labeled
 
-> “Rules checks the failure category against known log signatures. A match confirms only that category; a mismatch selects Rules for single-result triage; and an unknown signature leaves Gemma’s proposal unverified. This check does not prove the full explanation or fix. Suggested commands are for review and are never run.”
+**Show:** the `zetaris` field in the enriched response or `GET /api/zetaris/preflight`.
 
-## 1:30–2:05 · GitHub Action
+> “The Zetaris client uses read-only Lightning SQL. This machine is showing **fixture mode** [or **live mode** if returned], so the evidence source is explicit. The same call shape runs `SELECT 1`, `SHOW LIGHTNING DATABASES`, and a scoped historical CI-evidence query when credentials are present.”
 
-**Show:** [`actions-nurse.yml`](../.github/workflows/actions-nurse.yml) and the report artifact step.
+## 0:45–1:05 · Meterless H-MEM recall
 
-> “For automation, the composite Action listens for a failed workflow completion, reads failed job logs with Actions read permission, adds a Markdown report to the job summary, and uploads that report. The example also grants contents read. It does not retry the job or modify the repository.”
+**Show:** the prior-failure recall in triage, then run:
 
-## 2:05–2:30 · Close
+```bash
+cd meterless
+npm run memory -- ask "TypeScript missing exports typecheck"
+```
 
-**Show:** The MIT license, five fixture names, and the repository’s CI workflow.
+> “The recall is backed by real Meterless H-MEM. The startup line identifies `vendor/hmem`, and the answer carries memory IDs as provenance. Triage remembers this diagnosis through `MemoryMiningService`; recall uses `MemoryRetrievalService`; its history is available from the append-only `TrustLedgerService`.”
 
-> “The model path uses open-weight Gemma 4 through the Gemini API; the repository does not bundle model weights. The deterministic Rules path is available without a key. CI checks the Action fixtures and builds and smoke-tests the container. That is Actions Nurse: a bounded, inspectable first response to failed CI.”
+If asked about maintenance, point to the preview-only `SleepCycleService` command instead of running a destructive operation.
+
+## 1:05–1:20 · Trace, not hand-waving
+
+**Show:**
+
+```bash
+tail -n 1 demo/activity/trace.jsonl
+```
+
+> “Every run appends safe metadata: a hash and size for the input, the Rules hit, whether Gemma was skipped, the Zetaris mode, H-MEM IDs or availability, and the final engine. We store no raw CI log, API key, or authorization header in the trace.”
+
+## 1:20–1:30 · Close
+
+**Show:** the smoke script’s final `SMOKE_AGENTATHON_OK` line, then the README sponsor section.
+
+> “The whole fixture path is green without cloud secrets: failed log to diagnosis, evidence, memory recall, and audit trace. Zetaris supplies optional federated evidence; Meterless makes past fixes reusable; Gemma stays at the center of the explanation path.”
+
+## Useful backup lines
+
+- **No Gemini key:** “Rules-only mode is intentional for this reproducible demo. The Gemma path is optional and stays bounded when configured.”
+- **No Zetaris credentials:** “Fixture mode is the documented fallback, not a simulated live tenant. It proves the integration contract without inventing credentials.”
+- **H-MEM missing:** “Run `cd meterless && npm install && npm run setup`; the CLI deliberately refuses to fake memory when the engine is absent.”

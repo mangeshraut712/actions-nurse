@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -12,6 +14,7 @@ from nurse import (
     final_triage,
     guard_model_credential_advice as nurse_guard_credential_advice,
     health,
+    enriched_triage,
     parse_model_response as nurse_parse_response,
     rule_triage,
     validate_gemma_result,
@@ -39,6 +42,28 @@ def model_result(step: str, root_cause: str) -> TriageResult:
 
 
 class GemmaValidationTests(unittest.TestCase):
+    def test_unknown_log_text_is_not_written_to_activity_trace(self) -> None:
+        raw_marker = "super-secret-value-987"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "trace.jsonl"
+            with patch("nurse.hmem_status", return_value={"ready": False, "mode": "setup_required"}), patch(
+                "nurse.query_ci_evidence",
+                return_value={"mode": "fixture", "source": "recorded-demo-fixture", "result": {}},
+            ) as query, patch.dict(os.environ, {"NURSE_ACTIVITY_LOG": str(trace)}, clear=False):
+                result = enriched_triage(
+                    f"Run deploy token={raw_marker}",
+                    "fixture-model",
+                    use_rules=True,
+                    route="triage",
+                )
+            record = json.loads(trace.read_text(encoding="utf-8"))
+
+        self.assertIn(raw_marker, result.failing_step)  # User response stays useful.
+        self.assertEqual(record["rules"]["failing_step"], "Unrecognized CI failure")
+        self.assertEqual(record["final"]["failing_step"], "Unrecognized CI failure")
+        self.assertNotIn(raw_marker, json.dumps(record))
+        query.assert_called_once_with("Unrecognized CI failure", [])
+
     def test_known_failure_category_is_confirmed(self) -> None:
         result = validate_gemma_result(
             model_result("Checkout authentication", "Runner cannot access the repository"),

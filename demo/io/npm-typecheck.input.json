@@ -1,0 +1,9 @@
+{
+  "endpoint": "POST /api/triage",
+  "fixture": "fixtures/npm-typecheck.txt",
+  "input_sha256": "ffa3a8ec8b3700120b7e31f5c90ed7de50427f4326209a04eea5086aff68c58f",
+  "body": {
+    "rules_only": true,
+    "log": "Run npm run typecheck\n> actions-demo@0.1.0 typecheck\n> tsc --noEmit\n\nError: src/features/leagues/BurnStreakMatrixCard.tsx(5,15): error TS2305: Module '\"./types\"' has no exported member 'ActiveBurnStreakSummary'.\nError: src/features/leagues/RouteBurnSimulator.tsx(8,10): error TS2305: Module '\"./scoring\"' has no exported member 'estimateRouteBurn'.\nError: Process completed with exit code 2."
+  }
+}

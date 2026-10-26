@@ -1,6 +1,6 @@
 /**
  * Actions Nurse — Frontend
- * Hacktoberfest Hack Day Pune x Cloud Native Pune
+ * Open Agent Hackathon 2026 Wildcard [Tinkerer]
  */
 
 function renderResult(data) {
@@ -51,6 +51,33 @@ function renderResult(data) {
     ? 'No Gemma proposal returned; deterministic Rules result shown.'
     : validationStatus);
   validation.className = `validation-copy validation-${validationStatus}`;
+
+  const memory = data.memory || {};
+  const recall = Array.isArray(memory.recall) ? memory.recall : [];
+  const memoryEl = document.getElementById('memoryRecall');
+  if (memory.engine_source) {
+    const memoryNames = recall.map((item) => item.content).filter(Boolean).slice(0, 2);
+    memoryEl.textContent = memoryNames.length
+      ? `${memory.recall_service || 'H-MEM recall'} from ${memory.engine_source}: ${memoryNames.join(' · ')}`
+      : `${memory.mode || 'H-MEM'} is ready via ${memory.engine_source}; no similar recall cleared the threshold.`;
+  } else {
+    memoryEl.textContent = `H-MEM ${memory.mode || 'setup'}: ${memory.reason || 'run the documented setup to enable durable recall.'}`;
+  }
+
+  const zetaris = data.zetaris || {};
+  const zetarisResult = zetaris.result || {};
+  const evidenceEl = document.getElementById('zetarisEvidence');
+  const rowCount = zetarisResult.row_count;
+  const label = zetaris.mode === 'live' ? 'live read-only evidence' : 'recorded fixture evidence';
+  evidenceEl.textContent = zetaris.mode
+    ? `Zetaris ${label}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${zetarisResult.fixture ? ` · ${zetarisResult.fixture}` : ''}.`
+    : 'Zetaris evidence was not requested for this result.';
+
+  const activity = data.activity || {};
+  const activityEl = document.getElementById('activityTrace');
+  activityEl.textContent = activity.id
+    ? `${activity.id} · ${activity.path || 'demo/activity/trace.jsonl'}`
+    : 'Activity logging is unavailable for this request.';
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 

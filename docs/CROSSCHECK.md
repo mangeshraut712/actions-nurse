@@ -1,4 +1,9 @@
-# Verification record
+# Historical verification record
+
+> This is a preserved record for the earlier Hack Day Pune build. Its dates,
+> public tunnel, and model observations are not claims about the Open Agent
+> Hackathon 2026 build. Use [`scripts/smoke_agentathon.sh`](../scripts/smoke_agentathon.sh)
+> and the current [README](../README.md) for reproducible verification.
 
 Checked 25 October 2026 at approximately 17:23 IST. The documentation refresh is based on source tip `5e9236c`; this pass changes documentation only.
 

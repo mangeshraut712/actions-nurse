@@ -1,0 +1,34 @@
+{
+  "fixture": "ci-failure-signatures",
+  "notice": "Synthetic CI-history evidence recorded for the offline demo; it is not a live Zetaris table.",
+  "columns": [
+    "failure_signature",
+    "failing_step",
+    "occurrences",
+    "latest_recommendation",
+    "source"
+  ],
+  "data": [
+    [
+      "error TS2305 / has no exported member",
+      "Typecheck / tsc",
+      "3",
+      "Compare exports and imports, then run npm run typecheck before retrying.",
+      "synthetic demo corpus"
+    ],
+    [
+      "ENOSPC / no space left on device",
+      "Runner filesystem",
+      "2",
+      "Prune cache and artifact output before repeating npm ci.",
+      "synthetic demo corpus"
+    ],
+    [
+      "could not read Username / permission denied",
+      "Checkout / repository access",
+      "2",
+      "Use a repository-scoped, read-only credential for the target dependency.",
+      "synthetic demo corpus"
+    ]
+  ]
+}

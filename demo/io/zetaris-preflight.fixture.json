@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "mode": "fixture",
+  "read_only": true,
+  "checks": [
+    {
+      "name": "select_1",
+      "result": {
+        "ok": true,
+        "mode": "fixture",
+        "sql": "SELECT 1",
+        "fixture": "select-1.json",
+        "fallback_reason": "forced",
+        "notice": "Recorded demo fixture; this is not a live Zetaris response.",
+        "columns": [
+          "1"
+        ],
+        "data": [
+          [
+            "1"
+          ]
+        ],
+        "row_count": 1
+      }
+    },
+    {
+      "name": "lightning_databases",
+      "result": {
+        "ok": true,
+        "mode": "fixture",
+        "sql": "SHOW LIGHTNING DATABASES",
+        "fixture": "show-lightning-databases.json",
+        "fallback_reason": "forced",
+        "notice": "Recorded demo fixture; this is not a live Zetaris response.",
+        "columns": [
+          "database"
+        ],
+        "data": [
+          [
+            "demo_ci_evidence"
+          ]
+        ],
+        "row_count": 1
+      }
+    }
+  ]
+}

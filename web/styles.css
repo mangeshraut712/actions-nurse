@@ -520,6 +520,12 @@ dd {
   color: #9a3412;
 }
 
+.sponsor-copy {
+  color: #5c4a3e;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .compare article {
   padding: 1rem;
   border: 1px solid #ead9cc;

@@ -1,0 +1,6 @@
+{
+  "fixture": "show-lightning-databases",
+  "notice": "Recorded demo fixture; this is not a live Zetaris response.",
+  "columns": ["database"],
+  "data": [["demo_ci_evidence"]]
+}

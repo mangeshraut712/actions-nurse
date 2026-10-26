@@ -1,0 +1,106 @@
+{
+  "recording": {
+    "mode": "rules_only",
+    "sanitization": "The dynamic activity ID, timestamp, and isolated temporary trace path are omitted. All diagnosis, H-MEM, and Zetaris values below were returned by the local fixture run."
+  },
+  "summary": "CI failed on TypeScript typecheck (missing module exports).",
+  "failing_step": "Typecheck / tsc",
+  "root_cause": "TypeScript compile errors — missing exports or stale types after a merge.",
+  "suggested_fix": "Align types/scoring exports with imports, or rebase onto main and restore missing named exports.",
+  "confidence": "high",
+  "engine": "rules",
+  "patterns": [
+    "TS2305|has no exported member|tsc --noEmit|error TS\\d+"
+  ],
+  "fix_commands": [
+    "npm run typecheck",
+    "git diff origin/main...HEAD -- src/"
+  ],
+  "validation_status": "not_run",
+  "validation_detail": "",
+  "memory": {
+    "mode": "hmem",
+    "ready": true,
+    "engine_source": "vendor/hmem",
+    "recall_service": "MemoryRetrievalService",
+    "remember_service": "MemoryMiningService",
+    "recall": [
+      {
+        "id": "mem-1",
+        "content": "Remember this Actions Nurse diagnosis from actions-nurse:seed: Fixture npm-typecheck.txt: Typecheck / tsc failed after missing TypeScript exports.",
+        "relevance": 0.3263,
+        "source": "actions-nurse:seed"
+      },
+      {
+        "id": "mem-3",
+        "content": "Remember this Actions Nurse diagnosis from actions-nurse:seed: Fixture oom-killed.txt: Build / bundler hit JavaScript heap out of memory.",
+        "relevance": 0.2304,
+        "source": "actions-nurse:seed"
+      },
+      {
+        "id": "mem-6",
+        "content": "Remember this Actions Nurse diagnosis from actions-nurse:seed: Fixture pytest-assert.txt: Unit tests / pytest assertion differs from the computed fixture result.",
+        "relevance": 0.1563,
+        "source": "actions-nurse:seed"
+      }
+    ],
+    "recall_ids": [
+      "mem-1",
+      "mem-3",
+      "mem-6",
+      "mem-4",
+      "mem-2"
+    ],
+    "remembered_ids": [
+      "mem-7"
+    ],
+    "reason": null
+  },
+  "zetaris": {
+    "mode": "fixture",
+    "source": "recorded-demo-fixture",
+    "failing_step": "Typecheck / tsc",
+    "patterns": [
+      "TS2305|has no exported member|tsc --noEmit|error TS\\d+"
+    ],
+    "result": {
+      "ok": true,
+      "mode": "fixture",
+      "sql": "SELECT failure_signature, failing_step, occurrences, latest_recommendation, source FROM ci_failure_signatures WHERE failing_step = 'Typecheck / tsc' ORDER BY observed_at DESC LIMIT 3",
+      "fixture": "ci-failure-signatures.json",
+      "fallback_reason": "forced",
+      "notice": "Synthetic CI-history evidence recorded for the offline demo; it is not a live Zetaris table.",
+      "columns": [
+        "failure_signature",
+        "failing_step",
+        "occurrences",
+        "latest_recommendation",
+        "source"
+      ],
+      "data": [
+        [
+          "error TS2305 / has no exported member",
+          "Typecheck / tsc",
+          "3",
+          "Compare exports and imports, then run npm run typecheck before retrying.",
+          "synthetic demo corpus"
+        ]
+      ],
+      "row_count": 1
+    }
+  },
+  "evidence": [
+    {
+      "provider": "Zetaris Lightning SQL",
+      "mode": "fixture",
+      "source": "recorded-demo-fixture",
+      "fixture": "ci-failure-signatures.json",
+      "row_count": 1,
+      "notice": "Synthetic CI-history evidence recorded for the offline demo; it is not a live Zetaris table."
+    }
+  ],
+  "activity": {
+    "path": "demo/activity/trace.jsonl",
+    "note": "Each live request returns a fresh act-* ID and timestamp."
+  }
+}

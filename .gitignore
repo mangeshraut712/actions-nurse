@@ -2,4 +2,9 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.env.local
 .DS_Store
+node_modules/
+vendor/
+.notebook/
+meterless/.nurse-memory/

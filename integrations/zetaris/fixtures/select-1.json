@@ -1,0 +1,6 @@
+{
+  "fixture": "select-1",
+  "notice": "Recorded demo fixture; this is not a live Zetaris response.",
+  "columns": ["1"],
+  "data": [["1"]]
+}

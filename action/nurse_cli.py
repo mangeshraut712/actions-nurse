@@ -277,7 +277,7 @@ def to_markdown(result: dict) -> str:
 {cmd_block}
 
 ---
-Built for Hacktoberfest Hack Day Pune x Cloud Native Pune · Gemma 4 + offline rules
+Built with Gemma 4 + offline Rules
 """
 
 

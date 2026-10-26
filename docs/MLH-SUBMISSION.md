@@ -1,4 +1,8 @@
-# MLH Hack Day Pune submission copy
+# Historical: MLH Hack Day Pune submission copy
+
+> This file is retained as prior-event material. It is **not** the Open Agent
+> Hackathon 2026 submission or current demo guide; start with the
+> [Agentathon README](../README.md) and [90-second demo script](demo-script.md).
 
 The entries below are ready to paste into the two prize categories. They describe the implementation and its current limits; no award or portal-submission status is claimed here.
 

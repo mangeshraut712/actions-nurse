@@ -1,0 +1,47 @@
+{
+  "recording": {
+    "endpoint": "POST /api/memory/ask",
+    "request": {
+      "query": "TypeScript missing exports typecheck"
+    },
+    "sanitization": "The local temporary state directory and reinjection context are omitted; returned memory IDs, provenance, and ranking are retained."
+  },
+  "ok": true,
+  "engine_source": "vendor/hmem",
+  "operation": "ask",
+  "service": "MemoryRetrievalService",
+  "query": "TypeScript missing exports typecheck",
+  "memories": [
+    {
+      "id": "mem-1",
+      "content": "Remember this Actions Nurse diagnosis from actions-nurse:seed: Fixture npm-typecheck.txt: Typecheck / tsc failed after missing TypeScript exports.",
+      "type": "general",
+      "layer": "short_term",
+      "source": "actions-nurse:seed",
+      "relevance": 0.3214
+    },
+    {
+      "id": "mem-3",
+      "content": "Remember this Actions Nurse diagnosis from actions-nurse:seed: Fixture oom-killed.txt: Build / bundler hit JavaScript heap out of memory.",
+      "type": "general",
+      "layer": "short_term",
+      "source": "actions-nurse:seed",
+      "relevance": 0.1963
+    },
+    {
+      "id": "mem-7",
+      "content": "Remember this Actions Nurse diagnosis from actions-nurse:npm-typecheck.txt: Actions Nurse CI diagnosis.",
+      "type": "general",
+      "layer": "short_term",
+      "source": "actions-nurse:npm-typecheck.txt",
+      "relevance": 0.1172
+    }
+  ],
+  "memory_ids": [
+    "mem-1",
+    "mem-3",
+    "mem-7",
+    "mem-6"
+  ],
+  "strategy": "comprehensive"
+}

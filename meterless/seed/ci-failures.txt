@@ -1,0 +1,6 @@
+# Seeded Actions Nurse triage memories. Each line intentionally maps to a real fixture.
+Fixture npm-typecheck.txt: Typecheck / tsc failed after missing TypeScript exports. Reconcile imports and exports, then run npm run typecheck.
+Fixture disk-full.txt: Runner filesystem failed with ENOSPC. Prune caches or artifacts and inspect disk usage before retrying.
+Fixture oom-killed.txt: Build / bundler hit JavaScript heap out of memory. Raise NODE_OPTIONS modestly or split the build workload.
+Fixture checkout-auth.txt: Checkout / repository access was denied. Use a least-privilege token or GitHub App with read-only contents access to the required repository.
+Fixture pytest-assert.txt: Unit tests / pytest assertion differs from the computed fixture result. Recompute expected values before changing the test.
