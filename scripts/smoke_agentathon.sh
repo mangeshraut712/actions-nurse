@@ -119,8 +119,8 @@ if (( AFTER_BYTES <= BEFORE_BYTES )); then
   echo "Activity log did not grow: $ACTIVITY_LOG" >&2
   exit 1
 fi
-rg -q '"event":"triage"' "$ACTIVITY_LOG"
-rg -q '"engine_source":"vendor/hmem"' "$ACTIVITY_LOG"
-rg -q '"mode":"fixture"' "$ACTIVITY_LOG"
+grep -Fq '"event":"triage"' "$ACTIVITY_LOG"
+grep -Fq '"engine_source":"vendor/hmem"' "$ACTIVITY_LOG"
+grep -Fq '"mode":"fixture"' "$ACTIVITY_LOG"
 echo "activity=append-only bytes=${BEFORE_BYTES}->${AFTER_BYTES}"
 echo "SMOKE_AGENTATHON_OK"
