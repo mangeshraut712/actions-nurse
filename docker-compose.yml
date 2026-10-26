@@ -2,7 +2,7 @@ services:
   nurse:
     build: .
     ports:
-      - "127.0.0.1:8787:8787"
+      - "8787:8787"
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       NURSE_RULES_ONLY: ${NURSE_RULES_ONLY:-false}
