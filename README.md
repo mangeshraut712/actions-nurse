@@ -101,13 +101,13 @@ Open <http://127.0.0.1:8787>. The browser includes the five fixtures and a bundl
 
 ## Run the green demo path
 
-Start the server as above, then run the Agentathon smoke path from the repository root:
+After the H-MEM setup, run the Agentathon smoke path from the repository root:
 
 ```bash
 NURSE_RULES_ONLY=true ./scripts/smoke_agentathon.sh
 ```
 
-It triages `fixtures/npm-typecheck.txt` end to end, checks the real H-MEM seed/ask path, runs a Zetaris preflight (explicit fixture mode is a passing outcome), and verifies that the append-only activity trace grew. The script does not require a Gemini key or Zetaris credentials.
+With no argument, the script starts an isolated Rules-only server on port `8791`; pass an existing base URL as its first argument to reuse another local server. It triages `fixtures/npm-typecheck.txt` end to end, checks the real H-MEM seed/ask path, runs a Zetaris preflight (explicit fixture mode is a passing outcome), and verifies that the append-only activity trace grew. The script does not require a Gemini key or Zetaris credentials.
 
 Committed, sanitized examples live in:
 
