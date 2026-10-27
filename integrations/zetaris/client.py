@@ -169,31 +169,45 @@ def _safe_evidence_rows(rows: Any) -> list[dict[str, Any]]:
     return safe_rows
 
 
-def _probe_value_matches(rows: Any, expected: int) -> bool:
-    """Check a deterministic preflight SELECT without returning upstream cells."""
-    if not isinstance(rows, list):
+def _probe_value_matches(rows: Any, expected: int, *, expected_name: str | None = None) -> bool:
+    """Check one unambiguous, deterministic preflight scalar without returning it."""
+    if not isinstance(rows, list) or len(rows) != 1:
         return False
-    for row in rows:
-        if isinstance(row, Mapping):
-            values = row.values()
-        elif isinstance(row, (list, tuple)):
-            values = row
-        else:
-            values = (row,)
-        for value in values:
-            if not isinstance(value, (Mapping, list, tuple)) and str(value).strip() == str(expected):
-                return True
-    return False
+    row = rows[0]
+    if isinstance(row, Mapping):
+        if len(row) != 1:
+            return False
+        name, value = next(iter(row.items()))
+        normalized_name = re.sub(r"[^a-z0-9]+", "_", str(name).lower()).strip("_")
+        if expected_name and normalized_name not in {expected_name, "value"}:
+            return False
+    elif isinstance(row, (list, tuple)):
+        if len(row) != 1:
+            return False
+        value = row[0]
+    else:
+        value = row
+    return not isinstance(value, (Mapping, list, tuple)) and str(value).strip() == str(expected)
 
 
-def _safe_preflight_check(name: str, result: Mapping[str, Any], *, expected_probe: int | None = None) -> dict[str, Any]:
+def _safe_preflight_check(
+    name: str,
+    result: Mapping[str, Any],
+    *,
+    expected_probe: int | None = None,
+    expected_probe_name: str | None = None,
+) -> dict[str, Any]:
     """Return a row-free summary of one fixed, read-only preflight query."""
     raw_rows = result.get("data")
     row_count = len(raw_rows) if isinstance(raw_rows, list) else 0
     mode = str(result.get("mode") or "unavailable")
     ok = bool(result.get("ok"))
     reason = ""
-    if mode == "live" and expected_probe is not None and not _probe_value_matches(raw_rows, expected_probe):
+    if mode == "live" and expected_probe is not None and not _probe_value_matches(
+        raw_rows,
+        expected_probe,
+        expected_name=expected_probe_name,
+    ):
         mode = "unavailable"
         ok = False
         reason = "unexpected_probe_value"
@@ -274,6 +288,7 @@ class ZetarisConfig:
             self.synthetic_local_demo_requested
             and self.evidence_table == LOCAL_DEMO_EVIDENCE_TABLE
             and self.local_session_ready
+            and self.valid_local_ui_url
         )
 
 
@@ -496,6 +511,7 @@ class ZetarisClient:
                 "local_query_engine",
                 self.run_sql("SELECT 7 AS query_engine_probe"),
                 expected_probe=7,
+                expected_probe_name="query_engine_probe",
             ))
         else:
             checks.append(_safe_preflight_check("lightning_databases", self.run_sql("SHOW LIGHTNING DATABASES")))
@@ -537,7 +553,11 @@ class ZetarisClient:
         }
         provenance = (
             SYNTHETIC_LOCAL_DEMO_PROVENANCE
-            if self.config.owned_synthetic_local_demo
+            if (
+                self.config.owned_synthetic_local_demo
+                and result.get("mode") == "live"
+                and result.get("provider") == "local-session"
+            )
             else self.config.evidence_provenance
             if self.config.evidence_provenance != SYNTHETIC_LOCAL_DEMO_PROVENANCE
             else "unclassified"

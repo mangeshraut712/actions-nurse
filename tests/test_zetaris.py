@@ -387,6 +387,46 @@ class ZetarisClientTests(unittest.TestCase):
         self.assertEqual(result["result"]["fallback_reason"], "synthetic_demo_requires_owned_table")
         self.assertNotEqual(result["provenance"], "synthetic-local-demo")
 
+    def test_synthetic_label_rejects_invalid_local_provider_before_direct_rest_can_run(self) -> None:
+        response = types.SimpleNamespace(status_code=200, json=lambda: {"data": [["unexpected-live-row"]]})
+        fake_httpx = LocalHttpx([response])
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "https://outside.example",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+            "ZETARIS_CI_EVIDENCE_TABLE": "actions_nurse_demo_20261027_f9de7301.ci_failure_signatures",
+            "ZETARIS_EVIDENCE_PROVENANCE": "synthetic-local-demo",
+            "ZETARIS_REST_URL": "https://zetaris.example/api/v1.0",
+            "ZETARIS_ORG_ID": "123",
+            "ZETARIS_API_KEY": "not-a-real-key",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.query_ci_evidence("Typecheck / tsc")
+
+        self.assertEqual(result["mode"], "fixture")
+        self.assertEqual(result["result"]["fallback_reason"], "synthetic_demo_requires_owned_table")
+        self.assertNotEqual(result["provenance"], "synthetic-local-demo")
+        self.assertEqual(fake_httpx.client_options, [])
+
+    def test_failed_local_demo_query_uses_fixture_provenance(self) -> None:
+        login = types.SimpleNamespace(status_code=401, json=lambda: {"message": "not used"})
+        fake_httpx = LocalHttpx([login])
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+            "ZETARIS_CI_EVIDENCE_TABLE": "actions_nurse_demo_20261027_f9de7301.ci_failure_signatures",
+            "ZETARIS_EVIDENCE_PROVENANCE": "synthetic-local-demo",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.query_ci_evidence("Typecheck / tsc")
+
+        self.assertEqual(result["mode"], "fixture")
+        self.assertEqual(result["source"], "recorded-demo-fixture")
+        self.assertNotEqual(result["provenance"], "synthetic-local-demo")
+
     def test_local_preflight_uses_select_only_probes_supported_by_the_ui_proxy(self) -> None:
         login = types.SimpleNamespace(status_code=200, json=lambda: {"idToken": "token", "orgId": 42})
         first_query = types.SimpleNamespace(status_code=200, json=lambda: {"records": [{"value": "1"}]})
@@ -431,6 +471,49 @@ class ZetarisClientTests(unittest.TestCase):
         self.assertEqual(result["mode"], "unavailable")
         self.assertEqual(result["checks"][0]["result"]["reason"], "unexpected_probe_value")
         self.assertNotIn(marker, repr(result))
+
+    def test_preflight_rejects_extra_unrelated_select_one_value(self) -> None:
+        login = types.SimpleNamespace(status_code=200, json=lambda: {"idToken": "token", "orgId": 42})
+        ambiguous_select_one = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{"probe": "not-one", "unrelated": "1"}]},
+        )
+        expected_engine_probe = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{"query_engine_probe": "7"}]},
+        )
+        fake_httpx = LocalHttpx([login, ambiguous_select_one, login, expected_engine_probe])
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.preflight()
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["checks"][0]["result"]["reason"], "unexpected_probe_value")
+
+    def test_preflight_rejects_extra_unrelated_local_engine_probe_value(self) -> None:
+        login = types.SimpleNamespace(status_code=200, json=lambda: {"idToken": "token", "orgId": 42})
+        expected_select_one = types.SimpleNamespace(status_code=200, json=lambda: {"records": [{"value": "1"}]})
+        ambiguous_engine_probe = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{"query_engine_probe": "not-seven", "unrelated": "7"}]},
+        )
+        fake_httpx = LocalHttpx([login, expected_select_one, login, ambiguous_engine_probe])
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.preflight()
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["checks"][1]["result"]["reason"], "unexpected_probe_value")
 
     def test_empty_database_list_is_a_valid_live_response(self) -> None:
         response = types.SimpleNamespace(status_code=200, json=lambda: {"data": []})
