@@ -40,6 +40,13 @@ class HmemTwoPassDemoTests(unittest.TestCase):
         self.assertIn("provenance", copy)
         self.assertNotIn("past fixes reusable", copy)
 
+    def test_runtime_proof_requires_persisted_meterless_state_between_passes(self) -> None:
+        source = (ROOT / "scripts" / "hmem_two_pass_demo.py").read_text(encoding="utf-8")
+
+        self.assertIn('"state.json"', source)
+        self.assertIn('"ledger.jsonl"', source)
+        self.assertIn("persisted_state_verified", source)
+
 
 if __name__ == "__main__":
     unittest.main()

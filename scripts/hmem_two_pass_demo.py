@@ -52,6 +52,27 @@ def run() -> int:
 
             log = FIXTURE.read_text(encoding="utf-8")
             first = enriched_triage(log, "rules-only", use_rules=True, route="hmem-two-pass-demo")
+            first_ids = _ids(first.memory, "remembered_ids")
+            hmem_dir = Path(os.environ["NURSE_HMEM_DIR"])
+            state_file = hmem_dir / "state.json"
+            ledger_file = hmem_dir / "ledger.jsonl"
+            persisted_ids: list[str] = []
+            if state_file.is_file():
+                try:
+                    state = json.loads(state_file.read_text(encoding="utf-8"))
+                    persisted_ids = [
+                        str(record.get("id"))
+                        for record in state.get("records", [])
+                        if isinstance(record, dict) and record.get("id")
+                    ]
+                except (OSError, json.JSONDecodeError, AttributeError):
+                    persisted_ids = []
+            persisted_state_verified = bool(
+                first_ids
+                and set(first_ids).intersection(persisted_ids)
+                and ledger_file.is_file()
+                and ledger_file.stat().st_size > 0
+            )
             second = enriched_triage(log, "rules-only", use_rules=True, route="hmem-two-pass-demo")
         finally:
             for key, value in prior.items():
@@ -60,13 +81,14 @@ def run() -> int:
                 else:
                     os.environ[key] = value
 
-    first_ids = _ids(first.memory, "remembered_ids")
     recalled_ids = _ids(second.memory, "recall_ids")
     linked_ids = sorted(set(first_ids).intersection(recalled_ids))
     payload = {
-        "ok": bool(linked_ids),
+        "ok": bool(linked_ids) and persisted_state_verified,
         "engine_source": second.memory.get("engine_source"),
         "first_pass_remembered_ids": first_ids,
+        "persisted_prior_triage_ids": persisted_ids,
+        "persisted_state_verified": persisted_state_verified,
         "second_pass_recall_ids": recalled_ids,
         "linked_prior_triage_ids": linked_ids,
         "services": {

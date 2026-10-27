@@ -52,7 +52,10 @@ Open `http://127.0.0.1:8787`. Use `NURSE_PORT` if another local port is needed.
    ```
 
    Show that the first-pass remembered ID intersects the second-pass recall
-   ID. Say: “These IDs prove retrieval of a prior triage record, not that a
+   ID, and that `persisted_state_verified` is `true`. The script verifies the
+   Meterless reference engine's temporary `state.json` and `ledger.jsonl`
+   between separate bridge subprocess calls before removing that temporary
+   store. Say: “These IDs prove retrieval of a prior triage record, not that a
    repair was applied or that accuracy increased.”
 
 6. **0:58–1:00 — close.** State the held limits: synthetic local demo data,
