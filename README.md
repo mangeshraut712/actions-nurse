@@ -93,6 +93,12 @@ ZETARIS_API_KEY=your-api-key
 
 The client only issues read-only verification/evidence queries (`SELECT 1`, `SHOW LIGHTNING DATABASES`, and the configured evidence query). It falls back to labeled fixture responses if credentials are absent or an authentication request fails. Details and troubleshooting are in [docs/zetaris.md](docs/zetaris.md).
 
+For Docker Compose, pass that same ignored file explicitly so only the declared runtime values are interpolated into the container; optional Zetaris UI-proxy credentials are not injected:
+
+```bash
+docker compose --env-file .env.local up --build
+```
+
 ### 4. Start it
 
 For the guaranteed offline path:
