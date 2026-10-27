@@ -27,13 +27,13 @@ once and must never be pasted into a prompt or committed.
 The client sends one SQL statement to:
 
 ```text
-POST {ZETARIS_REST_URL}/sql-editor/sqls/run-query
+POST {ZETARIS_REST_URL}/sql-editor/sqls/run
 Authorization: Bearer {ZETARIS_API_KEY}
 X-Org-ID: {ZETARIS_ORG_ID}
 X-Request-ID: {uuid4}
 Content-Type: application/json
 
-{"sql":"..."}
+{"queryId":"<fresh UUID>","sql":"...","source":"SqlEditor","limit":100}
 ```
 
 It accepts only `SELECT`, `SHOW`, `DESCRIBE`, `EXPLAIN`, or read-only `WITH`
@@ -50,7 +50,20 @@ python3 -m integrations.zetaris.client
 
 It issues `SELECT 1` and `SHOW LIGHTNING DATABASES`. A live result reports
 `"mode": "live"`. Zetaris returns values as strings, so the client keeps the
-server response intact instead of coercing numeric fields.
+row values intact instead of coercing numeric fields. It extracts the response's
+`data` list and reports `row_count`; a missing or malformed list becomes an
+explicit fixture fallback, not a successful live claim. An empty list is valid
+for a clean instance's database listing.
+
+This direct REST request follows the [official runner at commit
+6a2fbaa](https://github.com/zetaris/getting-started/blob/6a2fbaa47c32c9ac33f6584c64b43b146c621bed/scripts/zetaris_sql.py).
+The UI-proxy path `/api/proxy/sql-editor/sqls/run-query` is a different route
+on the web UI origin; it is not appended to `/api/v1.0` here. Before claiming
+compatibility with a particular installed Zetaris version, compare its current
+OpenAPI specification and run the two read-only checks against that instance.
+Fixture success and `status()` reporting credentials present do not verify a
+live connection. Confirm `SELECT 1` actually returns `1` and both preflight
+checks report `mode: "live"`.
 
 For a focused evidence query, the app calls
 `query_ci_evidence(failing_step, patterns)`. Its example SQL reads a logical
@@ -87,3 +100,4 @@ headers.
 
 Further setup detail is available in the [official Zetaris client setup
 guide](https://zetaris.github.io/getting-started/docs/connections/client-setup.html).
+

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import types
 import unittest
+import uuid
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -64,12 +65,53 @@ class ZetarisClientTests(unittest.TestCase):
             result = client.run_sql("SELECT 1")
 
         self.assertEqual(result["mode"], "live")
-        self.assertEqual(post.call_args.args[0], "https://zetaris.example/api/v1.0/sql-editor/sqls/run-query")
-        self.assertEqual(post.call_args.kwargs["json"], {"sql": "SELECT 1"})
+        self.assertEqual(post.call_args.args[0], "https://zetaris.example/api/v1.0/sql-editor/sqls/run")
+        body = post.call_args.kwargs["json"]
+        self.assertEqual(set(body), {"queryId", "sql", "source", "limit"})
+        self.assertEqual(body["sql"], "SELECT 1")
+        self.assertEqual(body["source"], "SqlEditor")
+        self.assertEqual(body["limit"], 100)
+        self.assertEqual(uuid.UUID(body["queryId"]).version, 4)
+        self.assertEqual(result["data"], [["1"]])
+        self.assertEqual(result["row_count"], 1)
         headers = post.call_args.kwargs["headers"]
         self.assertEqual(headers["Authorization"], "Bearer not-a-real-key")
         self.assertEqual(headers["X-Org-ID"], "123")
-        self.assertTrue(headers["X-Request-ID"])
+        self.assertEqual(uuid.UUID(headers["X-Request-ID"]).version, 4)
+        self.assertNotEqual(headers["X-Request-ID"], body["queryId"])
+
+    def test_empty_database_list_is_a_valid_live_response(self) -> None:
+        response = types.SimpleNamespace(status_code=200, json=lambda: {"data": []})
+        client = ZetarisClient(environment={
+            "ZETARIS_REST_URL": "https://zetaris.example/api/v1.0",
+            "ZETARIS_ORG_ID": "123", "ZETARIS_API_KEY": "not-a-real-key",
+        })
+        with patch.dict(sys.modules, {"httpx": types.SimpleNamespace(post=Mock(return_value=response), RequestError=OSError)}):
+            result = client.run_sql("SHOW LIGHTNING DATABASES")
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(result["data"], [])
+        self.assertEqual(result["row_count"], 0)
+
+    def test_malformed_success_body_does_not_claim_live_success(self) -> None:
+        client = ZetarisClient(environment={
+            "ZETARIS_REST_URL": "https://zetaris.example/api/v1.0",
+            "ZETARIS_ORG_ID": "123", "ZETARIS_API_KEY": "not-a-real-key",
+        })
+        for body in ({"error": "query rejected"}, {"data": None}, [], {"data": "invalid"}):
+            with self.subTest(body=body):
+                response = types.SimpleNamespace(status_code=200, json=lambda: body)
+                with patch.dict(sys.modules, {"httpx": types.SimpleNamespace(post=Mock(return_value=response), RequestError=OSError)}):
+                    result = client.run_sql("SELECT 1")
+                self.assertEqual(result["mode"], "fixture")
+                self.assertEqual(result["fallback_reason"], "invalid_result_shape")
+
+    def test_organization_name_is_not_a_numeric_id(self) -> None:
+        client = ZetarisClient(environment={
+            "ZETARIS_REST_URL": "https://zetaris.example/api/v1.0",
+            "ZETARIS_ORG_ID": "demo-org", "ZETARIS_API_KEY": "not-a-real-key",
+        })
+        self.assertEqual(client.status()["reason"], "org_id_must_be_numeric")
+        self.assertEqual(client.run_sql("SELECT 1")["mode"], "fixture")
 
     def test_write_and_multiple_statement_sql_are_rejected(self) -> None:
         for sql in ("DROP TABLE ci_failure_signatures", "SELECT 1; DELETE FROM ci_failure_signatures"):
@@ -80,3 +122,4 @@ class ZetarisClientTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

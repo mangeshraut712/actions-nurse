@@ -18,7 +18,7 @@ from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
-RUN_QUERY_PATH = "/sql-editor/sqls/run-query"
+RUN_QUERY_PATH = "/sql-editor/sqls/run"
 READ_ONLY_STARTERS = {"SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "WITH"}
 WRITE_TOKENS = re.compile(
     r"\b(?:ALTER|CALL|COPY|CREATE|DELETE|DROP|EXPORT|GRANT|INSERT|MERGE|"
@@ -118,6 +118,8 @@ class ZetarisClient:
             return {"mode": "fixture", "configured": False, "reason": "missing_credentials"}
         if not self.config.valid_rest_url:
             return {"mode": "fixture", "configured": False, "reason": "rest_url_must_end_in_api_v1_0"}
+        if not re.fullmatch(r"[0-9]+", self.config.org_id):
+            return {"mode": "fixture", "configured": False, "reason": "org_id_must_be_numeric"}
         return {"mode": "live", "configured": True, "reason": "credentials_present"}
 
     def _fixture_name(self, sql: str) -> str:
@@ -155,7 +157,7 @@ class ZetarisClient:
     def run_sql(self, sql: str) -> dict[str, Any]:
         """Run one read-only SQL statement or return a labelled fixture result.
 
-        Direct REST uses exactly the ``/sql-editor/sqls/run-query`` endpoint,
+        Direct REST uses the ``/sql-editor/sqls/run`` endpoint (not the UI proxy),
         bearer key, organization ID, and a fresh request UUID required by the
         Zetaris setup guide. Returned dictionaries contain no request headers or
         secret material and are JSON serializable for FastAPI responses.
@@ -174,7 +176,7 @@ class ZetarisClient:
         try:
             response = httpx.post(
                 f"{self.config.rest_url}{RUN_QUERY_PATH}",
-                json={"sql": statement},
+                json={"queryId": str(uuid.uuid4()), "sql": statement, "source": "SqlEditor", "limit": 100},
                 headers={
                     "Authorization": f"Bearer {self.config.api_key}",
                     "X-Org-ID": self.config.org_id,
@@ -194,12 +196,18 @@ class ZetarisClient:
             data = response.json()
         except ValueError:
             return self._fixture_result(statement, reason="invalid_json_response")
+        # The direct API returns its result rows under data. Do not turn an
+        # arbitrary HTTP-200 error body into a claimed successful live query.
+        if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+            return self._fixture_result(statement, reason="invalid_result_shape")
+        rows = data["data"]
         return {
             "ok": True,
             "mode": "live",
             "sql": statement,
             "request_id": request_id,
-            "data": data,
+            "data": rows,
+            "row_count": len(rows),
         }
 
     def preflight(self) -> dict[str, Any]:
@@ -260,3 +268,4 @@ def query_ci_evidence(failing_step: str, patterns: list[str] | None = None) -> d
 
 if __name__ == "__main__":
     print(json.dumps(preflight(), indent=2, ensure_ascii=False))
+
