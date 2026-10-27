@@ -22,6 +22,18 @@ jobs:
           python-version: "3.12"
       - name: Install app dependencies
         run: python -m pip install -r requirements.txt
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: meterless/package-lock.json
+      - name: Install real Meterless H-MEM
+        working-directory: meterless
+        run: |
+          npm ci --no-audit --no-fund
+          npm run setup
+      - name: Verify sponsor integration fixture path
+        run: bash scripts/smoke_agentathon.sh
       - name: Check Python, Action CLI, and browser JavaScript
         run: |
           python -m compileall -q nurse.py action/nurse_cli.py activity_log.py memory_bridge.py integrations tests
@@ -58,4 +70,11 @@ jobs:
           fi
           curl -fsS http://127.0.0.1:8787/api/health
           curl -fsS http://127.0.0.1:8787/demo-assets/red-actions-permission-failure.png >/dev/null
-          ./scripts/smoke.sh
+          bash scripts/smoke.sh
+          curl -fsS -X POST http://127.0.0.1:8787/api/memory/seed \
+            | python -c 'import json,sys; d=json.load(sys.stdin); assert d["ok"] is True; assert d["engine_source"] == "vendor/hmem"; assert d["count"] > 0'
+          curl -fsS -X POST http://127.0.0.1:8787/api/memory/ask \
+            -H 'content-type: application/json' \
+            -d '{"query":"TypeScript missing exports typecheck"}' \
+            | python -c 'import json,sys; d=json.load(sys.stdin); assert d["ok"] is True; assert d["memory_ids"]'
+

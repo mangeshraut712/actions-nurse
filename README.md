@@ -45,6 +45,20 @@ Rules validate a known failure category only; they do not prove every sentence i
 
 ## How to run
 
+### Prerequisites
+
+Use Python 3.12, Node.js 22 with npm, Git, and curl. Initial installation needs internet access for Python/npm dependencies and the Meterless H-MEM reference engine. The Rules + H-MEM + Zetaris-fixture demo runs without cloud API keys after setup.
+
+## Prior work and event-specific additions
+
+Actions Nurse was first committed on 25 October 2026 for Hack Day Pune. This Open Agent Hackathon entry reuses that earlier entry's FastAPI app, Rules/Gemma text and screenshot triage, category validator, web interface, composite GitHub Action, Docker baseline, and five CI-log fixtures. It is not an entirely new project built solely for this event.
+
+The Open Agent Hackathon additions landed on 26 October 2026: the Zetaris read-only REST evidence client and explicitly labeled fixtures; the Meterless H-MEM bridge for mining, retrieval, provenance and preview-only maintenance; sanitized activity traces and recorded demo I/O; the sponsor smoke test; and refreshed demo documentation and interface styling. Compare the prior-entry baseline `7773b290352839110b2ac899c444da83376b56e1` with the sponsor integration commit `ffdb4c5ab91c5e43ba16d0568270b90897ddd5d3`.
+
+The current source does not implement an NVIDIA-specific integration. Gemma is a Google model accessed through the Gemini API; it is not evidence of NVIDIA technology use. Development-tool usage, including Cursor if used, must be confirmed by the author before submission.
+
+## Local installation
+
 ### 1. Python app
 
 ```bash
@@ -59,7 +73,7 @@ The engine is intentionally vendored at setup time, rather than committed. This 
 
 ```bash
 cd meterless
-npm install
+npm ci
 npm run setup
 npm run memory -- seed
 cd ..
@@ -84,7 +98,7 @@ The client only issues read-only verification/evidence queries (`SELECT 1`, `SHO
 For the guaranteed offline path:
 
 ```bash
-NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
+ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
 For the optional Gemma path, set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) and leave Rules-only mode off:
@@ -104,7 +118,7 @@ Open <http://127.0.0.1:8787>. The browser includes the five fixtures and a bundl
 After the H-MEM setup, run the Agentathon smoke path from the repository root:
 
 ```bash
-NURSE_RULES_ONLY=true ./scripts/smoke_agentathon.sh
+ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true bash scripts/smoke_agentathon.sh
 ```
 
 With no argument, the script starts an isolated Rules-only server on port `8791`; pass an existing base URL as its first argument to reuse another local server. It triages `fixtures/npm-typecheck.txt` end to end, checks the real H-MEM seed/ask path, runs a Zetaris preflight (explicit fixture mode is a passing outcome), and verifies that the append-only activity trace grew. The script does not require a Gemini key or Zetaris credentials.
@@ -170,3 +184,4 @@ docs/demo-script.md      90-second judge route
 ```
 
 MIT licensed. Built for the Open Agent Hackathon 2026 Wildcard [Tinkerer] track.
+

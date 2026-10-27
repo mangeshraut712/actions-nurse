@@ -8,11 +8,13 @@ The reference engine is deliberately vendored rather than replaced with a mock. 
 
 ```bash
 cd meterless
-npm install
+npm ci
 npm run setup
 ```
 
-`npm run setup` uses `degit` to place Meterless's H-MEM reference under `meterless/vendor/hmem/`. That directory is intentionally untracked. The bridge reports `"engine_source":"vendor/hmem"` in machine output (and a matching startup line for human commands), so a demo can show the real source it loaded.
+`npm run setup` uses `degit@3.10.1` to fetch Meterless commit `1742dec56a66e58eef9dda2d2b865823758ca8cd` into `meterless/vendor/hmem/`, then installs the engine dependencies with `npm ci` using that commit's tracked lockfile. That directory is intentionally untracked. The bridge reports `"engine_source":"vendor/hmem"` in machine output (and a matching startup line for human commands), so a demo can show the real source it loaded.
+
+This pins the engine source and dependency lockfiles, not the entire operating environment: the installer is fetched from npm, container base images are version tags rather than digest pins, and Python's `python-dotenv` requirement remains a range. Initial setup requires network access. The engine is Meterless's deterministic reference implementation, not a production memory service.
 
 ## Demo commands
 
@@ -44,3 +46,4 @@ printf '%s' '{"query":"what previous failure used NODE_OPTIONS?"}' \
 ```
 
 Each successful response includes `ok`, `engine_source`, `state_dir`, `service`, and provenance/memory IDs where applicable. Use `npm --silent run` in the Python bridge so npm's lifecycle banner never precedes the one JSON object. The bridge redacts common token-shaped values before writing memory.
+

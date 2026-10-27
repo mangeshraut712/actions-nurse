@@ -7,14 +7,14 @@ The reliable route is deliberately key-free: Rules-only triage, H-MEM installed 
 In one terminal:
 
 ```bash
-cd meterless && npm install && npm run setup && npm run memory -- seed && cd ..
-NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
+cd meterless && npm ci && npm run setup && npm run memory -- seed && cd ..
+ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
 In a second terminal, keep this command ready:
 
 ```bash
-NURSE_RULES_ONLY=true ./scripts/smoke_agentathon.sh
+ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true bash scripts/smoke_agentathon.sh
 ```
 
 Open <http://127.0.0.1:8787> or show the terminal output. Do not claim a Gemini or Zetaris cloud call unless the response mode says it actually happened.
@@ -73,3 +73,4 @@ tail -n 1 demo/activity/trace.jsonl
 - **No Gemini key:** “Rules-only mode is intentional for this reproducible demo. The Gemma path is optional and stays bounded when configured.”
 - **No Zetaris credentials:** “Fixture mode is the documented fallback, not a simulated live tenant. It proves the integration contract without inventing credentials.”
 - **H-MEM missing:** “Run `cd meterless && npm install && npm run setup`; the CLI deliberately refuses to fake memory when the engine is absent.”
+
