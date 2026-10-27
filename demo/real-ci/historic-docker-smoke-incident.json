@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "kind": "historic_repository_ci_case",
+  "title": "Historic Docker Compose smoke incident",
+  "source_repository": "https://github.com/mangeshraut712/actions-nurse",
+  "boundary": "Recorded historic repository CI metadata; not a live query, not a synthetic fixture, not production evidence, and not a successful autonomous repair.",
+  "failed_ci": {
+    "commit_sha": "8616b672c2b8ed186c8cb8a1f7e6d61f13eedb28",
+    "display_sha": "8616b672",
+    "commit_url": "https://github.com/mangeshraut712/actions-nurse/commit/8616b672c2b8ed186c8cb8a1f7e6d61f13eedb28",
+    "run_id": "40328653045",
+    "run_url": "https://github.com/mangeshraut712/actions-nurse/actions/runs/40328653045",
+    "job_id": "121591898621",
+    "job_url": "https://github.com/mangeshraut712/actions-nurse/actions/runs/40328653045/job/121591898621",
+    "completed_at_utc": "2026-10-26T13:14:21Z",
+    "stage": "Build and smoke-test the Docker Compose deployment",
+    "outcome": "failure",
+    "safe_annotation": "exit code 7",
+    "safe_signature": "curl: (7) Failed to connect"
+  },
+  "actions_nurse_triage": {
+    "commit_sha": "8616b672c2b8ed186c8cb8a1f7e6d61f13eedb28",
+    "run_id": "40328858092",
+    "run_url": "https://github.com/mangeshraut712/actions-nurse/actions/runs/40328858092",
+    "started_at_utc": "2026-10-26T13:14:24Z",
+    "workflow_outcome": "success",
+    "engine": "rules",
+    "result": "unknown",
+    "detail": "Unrecognized failure signature; no diagnosis or repair claimed."
+  },
+  "documented_follow_up": {
+    "commit_sha": "0d46c28706f5cfe0183c1c0f0db872ecf062224d",
+    "display_sha": "0d46c28",
+    "commit_url": "https://github.com/mangeshraut712/actions-nurse/commit/0d46c28706f5cfe0183c1c0f0db872ecf062224d",
+    "parent_commit_sha": "8616b672c2b8ed186c8cb8a1f7e6d61f13eedb28",
+    "summary": "The follow-up commit documents CI image imports and health diagnostics updates."
+  },
+  "subsequent_ci": {
+    "commit_sha": "0d46c28706f5cfe0183c1c0f0db872ecf062224d",
+    "run_id": "40331404876",
+    "run_url": "https://github.com/mangeshraut712/actions-nurse/actions/runs/40331404876",
+    "completed_at_utc": "2026-10-26T13:32:39Z",
+    "outcome": "success"
+  },
+  "limitations": [
+    "This record preserves sanitized metadata, not raw GitHub logs or artifacts.",
+    "It does not establish the root cause of the failed health endpoint.",
+    "It does not show production impact, a successful autonomous repair, improved accuracy, or time saved."
+  ]
+}

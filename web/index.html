@@ -101,6 +101,22 @@
         </article>
       </div>
     </section>
+    <section class="panel" id="historicCiCase" aria-labelledby="historicCiCaseHeading">
+      <div class="section-heading">
+        <div>
+          <h2 id="historicCiCaseHeading">Historic repository CI case</h2>
+          <p class="sponsor-copy">Recorded public repository metadata: not a live query, not a synthetic fixture, not production evidence, and not a successful autonomous repair.</p>
+        </div>
+        <span class="compare-label">Recorded history</span>
+      </div>
+      <ol class="compare-flow" aria-label="Historic CI evidence chronology">
+        <li><span>01</span><div><strong>Docker Compose smoke failed</strong><small><a href="https://github.com/mangeshraut712/actions-nurse/actions/runs/40328653045">Run 40328653045</a> · <a href="https://github.com/mangeshraut712/actions-nurse/actions/runs/40328653045/job/121591898621">job 121591898621</a> · <a href="https://github.com/mangeshraut712/actions-nurse/commit/8616b672c2b8ed186c8cb8a1f7e6d61f13eedb28">commit 8616b672</a></small></div></li>
+        <li><span>02</span><div><strong>Actions Nurse Rules abstained</strong><small><a href="https://github.com/mangeshraut712/actions-nurse/actions/runs/40328858092">Same-commit triage run 40328858092</a> completed, but the Rules result was <code>unknown</code>: unrecognized failure signature.</small></div></li>
+        <li><span>03</span><div><strong>Documented follow-up, then green CI</strong><small><a href="https://github.com/mangeshraut712/actions-nurse/commit/0d46c28706f5cfe0183c1c0f0db872ecf062224d">Follow-up commit 0d46c28</a> · <a href="https://github.com/mangeshraut712/actions-nurse/actions/runs/40331404876">subsequent green run 40331404876</a></small></div></li>
+      </ol>
+      <p class="validation-banner"><strong>Boundary:</strong> the failed job has a safe <code>exit code 7</code> annotation and <code>curl: (7) Failed to connect</code> signature. That does not establish the root cause; the later green run does not establish a successful autonomous repair.</p>
+      <p class="sponsor-copy">This card preserves sanitized metadata only—no raw logs or artifacts. The interactive demo remains separately labeled as fixture evidence or a real local Zetaris query over synthetic reference rows. Review the <a href="https://github.com/mangeshraut712/actions-nurse/blob/main/demo/real-ci/historic-docker-smoke-incident.json">metadata record</a> and <a href="https://github.com/mangeshraut712/actions-nurse/blob/main/docs/historic-ci-case-study.md">case-study notes</a> for the complete boundary.</p>
+    </section>
   </main>
   <footer>Gemma 4 via Gemini API · Meterless H-MEM · Zetaris read-only Lightning SQL · deterministic Rules fallback · MIT</footer>
   <script src="/static/app.js?v=evidence1"></script>

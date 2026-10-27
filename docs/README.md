@@ -15,6 +15,9 @@ security boundaries, and verification commands.
   Zetaris query using clearly labeled synthetic reference rows.
 - [Recorded fixture I/O](../demo/io/README.md) — sanitized example inputs and
   responses.
+- [Historic repository CI case study](historic-ci-case-study.md) — an
+  inspectable public CI timeline, explicitly separate from live or synthetic
+  Zetaris evidence.
 
 ## Historical material
 
