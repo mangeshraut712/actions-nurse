@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Actions Nurse · Agentathon 2026</title>
-  <link rel="stylesheet" href="/static/styles.css?v=apple1" />
+  <link rel="stylesheet" href="/static/styles.css?v=evidence1" />
 </head>
 <body>
   <header>
@@ -34,7 +34,7 @@
       <label for="log">Failed CI log</label>
       <textarea id="log" rows="14" placeholder="Paste a failed GitHub Actions log…"></textarea>
       <div class="row actions">
-        <button id="triage" class="primary">Triage with Gemma 4</button>
+        <button id="triage" class="primary">Triage CI failure</button>
         <button id="compare" class="secondary">Compare Rules vs Gemma</button>
         <button id="clear" class="ghost" type="button">Clear</button>
         <label class="file"><input type="file" id="image" accept="image/*" /> + CI screenshot</label>
@@ -58,7 +58,7 @@
         <dt>Engine</dt><dd id="engine"></dd>
         <dt>Rules check</dt><dd id="validation" class="validation-copy"></dd>
         <dt>H-MEM recall</dt><dd id="memoryRecall" class="sponsor-copy"></dd>
-        <dt>Zetaris evidence</dt><dd id="zetarisEvidence" class="sponsor-copy"></dd>
+        <dt>Zetaris evidence</dt><dd class="sponsor-copy"><span id="zetarisEvidence"></span><div id="zetarisEvidenceDetails"></div></dd>
         <dt>Activity trace</dt><dd id="activityTrace" class="sponsor-copy"></dd>
       </dl>
     </section>
@@ -103,6 +103,6 @@
     </section>
   </main>
   <footer>Gemma 4 via Gemini API · Meterless H-MEM · Zetaris read-only Lightning SQL · deterministic Rules fallback · MIT</footer>
-  <script src="/static/app.js?v=apple6"></script>
+  <script src="/static/app.js?v=evidence1"></script>
 </body>
 </html>

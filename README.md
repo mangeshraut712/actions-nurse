@@ -19,7 +19,7 @@ Actions Nurse is a first-response tool, not an autonomous repair bot. It identif
 - Reads a failed Actions log, with an optional screenshot in the web UI.
 - Keeps the original Gemma-first diagnosis path: Gemma 4 may propose a diagnosis; deterministic Rules independently classify known signatures and override a conflicting category.
 - Works without a Gemini key. Rules-only mode is intentionally deterministic and drives the complete fixture demo.
-- Uses **Meterless H-MEM** to remember completed triages and retrieve similar failures with provenance across runs.
+- Uses **Meterless H-MEM** to remember prior triages and retrieve similar failures with provenance across runs; recalled IDs do not validate a repair or prove improved accuracy.
 - Uses **Zetaris Lightning SQL** as an optional, read-only evidence source. With no credentials it returns clearly labeled local fixtures, so the demo remains reproducible and never pretends it contacted a cloud account.
 - Writes safe execution metadata, not raw logs or credentials, to `demo/activity/trace.jsonl`.
 
@@ -81,6 +81,14 @@ cd ..
 
 `npm run setup` vendors Meterless H-MEM under `vendor/hmem/`; it is gitignored. The memory CLI prints `engine source: vendor/hmem` (or the same value in its JSON output) when the real engine has loaded. See [the Meterless integration notes](docs/meterless.md).
 
+To demonstrate a clean provenance chain rather than a pre-seeded recall, run:
+
+```bash
+bash scripts/demo_hmem_two_pass.sh
+```
+
+It uses a temporary H-MEM store: pass one records a Rules-only triage and pass two must recall the same ID. It reports `setup_required` without simulating a result when the local vendor source has not been installed.
+
 ### 3. Optional Zetaris credentials
 
 The default is fixture mode. To use a real Zetaris Cloud/Hackathon organization, copy `.env.example` to the ignored `.env.local` and fill only these values:
@@ -91,7 +99,30 @@ ZETARIS_ORG_ID=your-org-id
 ZETARIS_API_KEY=your-api-key
 ```
 
-The client only issues read-only verification/evidence queries (`SELECT 1`, `SHOW LIGHTNING DATABASES`, and the configured evidence query). It falls back to labeled fixture responses if credentials are absent or an authentication request fails. Details and troubleshooting are in [docs/zetaris.md](docs/zetaris.md).
+The client only issues read-only verification/evidence queries (`SELECT 1`, `SHOW LIGHTNING DATABASES`, and the configured evidence query). Direct remote REST requires HTTPS; loopback local evaluation may use HTTP. It falls back to labeled fixture responses if credentials are absent or an authentication request fails. Details and troubleshooting are in [docs/zetaris.md](docs/zetaris.md).
+
+For an already-running local Zetaris evaluation stack, no new API token is
+needed. Seed the clearly labeled synthetic demo corpus once, then launch the
+loopback-only app runner without copying platform credentials into this repo:
+
+```bash
+ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
+  bash scripts/seed_local_zetaris_demo.sh --apply
+ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
+  NURSE_RULES_ONLY=true bash scripts/run_local_zetaris_demo.sh
+```
+
+This uses real local Zetaris queries, but the four demo rows are newly authored
+synthetic data and responses explicitly report `provenance: synthetic-local-demo`.
+The seed tool owns only its uniquely named demo schema/table, verifies the
+canonical four-row corpus before labelling it synthetic, and refuses to replace
+mismatched local data.
+
+For Docker Compose, pass that same ignored file explicitly so only the declared runtime values are interpolated into the container; optional Zetaris UI-proxy credentials are not injected. The default published app port is loopback-only:
+
+```bash
+docker compose --env-file .env.local up --build
+```
 
 ### 4. Start it
 
@@ -109,7 +140,7 @@ GEMINI_API_KEY=your-key NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.
 
 Open <http://127.0.0.1:8787>. The browser includes the five fixtures and a bundled red-Action screenshot. The core endpoints remain `/api/health`, `/api/triage`, `/api/triage-image`, and `/api/compare`; sponsor integration endpoints expose memory, Zetaris preflight, and the latest activity trace without changing the original routes.
 
-- `GET /api/zetaris/preflight` runs `SELECT 1` and `SHOW LIGHTNING DATABASES` only.
+- `GET /api/zetaris/preflight` runs direct-REST `SELECT 1` plus `SHOW LIGHTNING DATABASES`; local-session mode uses two `SELECT` probes because its UI proxy accepts `SELECT` only.
 - `POST /api/memory/seed`, `/api/memory/ask`, and `/api/memory/remember` expose the real H-MEM bridge; `GET /api/memory/audit/{id}` returns its Trust Ledger history.
 - `GET /api/activity/latest` returns the recent sanitized JSONL events.
 
@@ -134,7 +165,7 @@ The complete presenter script is in [docs/demo-script.md](docs/demo-script.md). 
 
 1. Show the failed TypeScript fixture and run Rules-only triage.
 2. Point out the likely root cause and the Zetaris evidence field; in an offline demo it is honestly labeled `fixture`.
-3. Ask H-MEM for a similar failure and show its engine source and provenance IDs.
+3. Run the fresh-store two-pass H-MEM proof and show the linked prior-triage provenance IDs.
 4. Open the activity trace to show the received-input hash, Rules hit, sponsor modes, and final engine.
 
 That sequence is reliable without cloud credentials. If valid credentials are available, repeat the preflight to show `live` Zetaris mode; the application does not change its read-only contract.
@@ -150,11 +181,11 @@ This is a real H-MEM wiring, not a memory-shaped JSON stub. The `meterless/` bri
 - `TrustLedgerService` through `hmem.ledger.history()` for provenance/audit; and
 - `SleepCycleService` through `hmem.sleep.preview()` for safe, preview-first maintenance.
 
-H-MEM persists local state under the ignored memory directory. The running app degrades safely if the engine has not been installed, and explains that state rather than manufacturing a recall.
+H-MEM persists local state under the ignored memory directory. It records and retrieves prior triages; the IDs are provenance rather than proof that a repair worked. The running app degrades safely if the engine has not been installed, and explains that state rather than manufacturing a recall.
 
 ### Zetaris
 
-The small Python client reads `.env` followed by `.env.local`, then sends Lightning SQL over Zetaris REST with a request ID. It never writes. `preflight()` runs `SELECT 1` and `SHOW LIGHTNING DATABASES`; triage can attach a narrowly scoped historical CI-evidence query. Fixture mode has the identical response shape and carries `mode: "fixture"` so a judge can immediately distinguish a local demo from a live tenant.
+The small Python client reads `.env` followed by `.env.local`, then sends read-only Lightning SQL over Zetaris REST with a request ID. Direct remote REST requires HTTPS and ignores ambient proxy settings; a separate local-session provider is restricted to loopback and obtains a short-lived UI session per query without creating an API token. `preflight()` runs `SELECT 1` and `SHOW LIGHTNING DATABASES` through direct REST, or two validated `SELECT` probes through local UI, and returns no raw upstream rows. Triage attaches a narrowly scoped evidence query. Fixture mode has the identical response shape and carries `mode: "fixture"` so a judge can distinguish a fixture from real local or cloud data. The local demo reports `provenance: synthetic-local-demo` only for its owned, validated corpus rather than claiming synthetic rows are CI history.
 
 ### Gemma 4 and Rules
 
