@@ -261,7 +261,7 @@ async function boot() {
         if (fileStatus) fileStatus.textContent = '';
         showImage(null);
         clearResults();
-        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage with Gemma 4” to diagnose it.`);
+        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage CI failure” to diagnose it.`);
       };
       fixturesEl.appendChild(btn);
     }
@@ -278,7 +278,7 @@ async function boot() {
       fileStatus.textContent = file ? `Attached: ${file.name}` : '';
       showImage(file);
       clearResults();
-      if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage with Gemma 4.');
+      if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage the failure.');
     });
   }
 

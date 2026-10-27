@@ -10,6 +10,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WebZetarisEvidenceTests(unittest.TestCase):
+    def test_default_triage_call_to_action_is_mode_neutral(self) -> None:
+        page = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+        script = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="triage" class="primary">Triage CI failure</button>', page)
+        self.assertNotIn('id="triage" class="primary">Triage with Gemma 4</button>', page)
+        self.assertNotIn("Press “Triage with Gemma 4”", script)
+        self.assertNotIn("then triage with Gemma 4", script)
+        self.assertIn("if (health.rules_only)", script)
+        self.assertIn("Rules-only mode is active. No Gemma request is made", script)
+
     def test_result_panel_reserves_a_structured_zetaris_evidence_area(self) -> None:
         page = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
 

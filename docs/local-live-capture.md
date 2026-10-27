@@ -35,7 +35,7 @@ Open `http://127.0.0.1:8787`. Use `NURSE_PORT` if another local port is needed.
    is deterministic Rules triage plus a read-only, local Zetaris evidence
    query. No repair command is executed.”
 2. **0:08–0:18 — reproducible failure.** Click the `npm-typecheck` fixture,
-   then **Triage with Gemma 4**. In Rules-only mode, make clear that no Gemma
+   then **Triage CI failure**. In Rules-only mode, make clear that no Gemma
    request is being made.
 3. **0:18–0:35 — live evidence.** Show `Typecheck / tsc`, then the Zetaris
    line: **live local read-only query · synthetic local demo rows · 1 matching
