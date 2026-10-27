@@ -33,7 +33,11 @@ jobs:
           npm ci --no-audit --no-fund
           npm run setup
       - name: Verify sponsor integration fixture path
-        run: bash scripts/smoke_agentathon.sh
+        run: |
+          bash scripts/smoke_agentathon.sh
+          # The smoke path must use temporary runtime state rather than append
+          # new events to the tracked, sanitized sample trace.
+          git diff --exit-code -- demo/activity/trace.jsonl
       - name: Check Python, Action CLI, and browser JavaScript
         run: |
           python -m compileall -q nurse.py action/nurse_cli.py activity_log.py memory_bridge.py integrations tests
@@ -71,6 +75,8 @@ jobs:
           curl -fsS http://127.0.0.1:8787/api/health
           curl -fsS http://127.0.0.1:8787/demo-assets/red-actions-permission-failure.png >/dev/null
           bash scripts/smoke.sh
+          # Reuse the Compose app without assuming ownership of its local trace.
+          bash scripts/smoke_agentathon.sh http://127.0.0.1:8787
           curl -fsS -X POST http://127.0.0.1:8787/api/memory/seed \
             | python -c 'import json,sys; d=json.load(sys.stdin); assert d["ok"] is True; assert d["engine_source"] == "vendor/hmem"; assert d["count"] > 0'
           curl -fsS -X POST http://127.0.0.1:8787/api/memory/ask \

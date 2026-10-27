@@ -8,8 +8,13 @@ In one terminal:
 
 ```bash
 cd meterless && npm ci && npm run setup && cd ..
+DEMO_STATE_DIR="$(mktemp -d)"
+export NURSE_ACTIVITY_LOG="$DEMO_STATE_DIR/trace.jsonl"
 ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
+
+The temporary trace keeps the committed sanitized example unchanged during a
+live demo. Keep this terminal open for the trace step below.
 
 In a second terminal, keep this command ready:
 
@@ -37,7 +42,7 @@ Point to the failing step and the suggested local `npm run typecheck` check. Do 
 
 **Show:** the `zetaris` field in the enriched response or `GET /api/zetaris/preflight`.
 
-> “The Zetaris client uses read-only Lightning SQL. This machine is showing **fixture mode** [or **live mode** if returned], so the evidence source is explicit. The same call shape runs `SELECT 1`, `SHOW LIGHTNING DATABASES`, and a scoped historical CI-evidence query when credentials are present.”
+> “The Zetaris client uses read-only Lightning SQL. This machine is showing **fixture mode** [or **live mode** if returned], so the evidence source is explicit. Direct REST preflight runs `SELECT 1` and `SHOW LIGHTNING DATABASES`; a loopback local session runs `SELECT 1` and `SELECT 7 AS query_engine_probe`. A configured source can then supply a scoped CI-evidence query.”
 
 ## 0:45–1:05 · Meterless H-MEM recall
 
@@ -56,7 +61,7 @@ If asked about maintenance, point to the preview-only `SleepCycleService` comman
 **Show:**
 
 ```bash
-tail -n 1 demo/activity/trace.jsonl
+tail -n 1 "$NURSE_ACTIVITY_LOG"
 ```
 
 > “Every run appends safe metadata: a hash and size for the input, the Rules hit, whether Gemma was skipped, the Zetaris mode, H-MEM IDs or availability, and the final engine. We store no raw CI log, API key, or authorization header in the trace.”
@@ -71,5 +76,5 @@ tail -n 1 demo/activity/trace.jsonl
 
 - **No Gemini key:** “Rules-only mode is intentional for this reproducible demo. The Gemma path is optional and stays bounded when configured.”
 - **No Zetaris credentials:** “Fixture mode is the documented fallback, not a simulated live tenant. It proves the integration contract without inventing credentials.”
-- **H-MEM missing:** “Run `cd meterless && npm install && npm run setup`; the CLI deliberately refuses to fake memory when the engine is absent.”
+- **H-MEM missing:** “Run `cd meterless && npm ci && npm run setup`; the CLI deliberately refuses to fake memory when the engine is absent.”
 

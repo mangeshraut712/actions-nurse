@@ -33,7 +33,7 @@ The [public quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) is **
 
 - [README and quickstart](../README.md)
 - [Paste-ready entries for both prize categories](MLH-SUBMISSION.md)
-- [Timed 2:30 demo script](demo-script.md)
-- [Current verification record](CROSSCHECK.md)
+- [Current 90-second demo script](demo-script.md)
+- [Historical verification record](CROSSCHECK.md)
 
 No additional feature is needed to explain the current entry. Keep the presentation focused on the multimodal comparison, its narrow validation claim, and the reusable open-source Action.

@@ -19,11 +19,11 @@ ZETARIS_API_KEY=replace-with-your-user-created-api-key
 
 For Zetaris Cloud, use the HTTPS API base supplied by the organiser or Cloud UI. It
 must end in `/api/v1.0`; plain HTTP is accepted only for a loopback local runtime.
-The browser UI address belongs in the optional
-`ZETARIS_BASE_URL` and is not used by this direct REST client. Find the numeric
-organisation ID under **Management → Organisation**. Create a user API token
-under **Management → API Tokens** and save it locally: the token is shown only
-once and must never be pasted into a prompt or committed.
+Do not add browser URLs, browser usernames, or browser passwords to the runtime
+template: neither supported provider consumes them. Find the numeric organisation
+ID under **Management → Organisation**. Create a user API token under
+**Management → API Tokens** and save it locally: the token is shown only once and
+must never be pasted into a prompt or committed.
 
 The client sends one SQL statement to:
 
@@ -134,7 +134,9 @@ ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
 
 The runner reads only the two needed values from the platform `.env` into its
 own process, binds Actions Nurse to `127.0.0.1:8787` by default, and never
-prints or writes those values. Use `NURSE_PORT` to select another loopback port.
+prints or writes those values. It uses a temporary activity trace unless
+`NURSE_ACTIVITY_LOG` is deliberately set. Use `NURSE_PORT` to select another
+loopback port.
 
 ## Fixture mode for the hackathon demo
 

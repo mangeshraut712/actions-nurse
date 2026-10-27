@@ -77,6 +77,43 @@ class ZetarisDemoSeedAssetTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("ZETARIS_PLATFORM_DIR", result.stderr)
 
+    def test_local_live_runner_uses_a_temporary_trace_when_unset(self) -> None:
+        """The opt-in demo launcher must not append to the tracked sample trace."""
+        script = ROOT / "scripts" / "run_local_zetaris_demo.sh"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            platform = Path(temp_dir) / "platform"
+            platform.mkdir()
+            (platform / ".env").write_text(
+                "ZETARIS_ADMIN_EMAIL=demo@example.test\nZETARIS_ADMIN_PASSWORD=not-a-real-password\n",
+                encoding="utf-8",
+            )
+            fake_python = Path(temp_dir) / "print-trace.sh"
+            fake_python.write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"${NURSE_ACTIVITY_LOG:-}\"\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+            environment = dict(os.environ)
+            environment.pop("NURSE_ACTIVITY_LOG", None)
+            environment.update({
+                "ZETARIS_PLATFORM_DIR": str(platform),
+                "PYTHON": str(fake_python),
+            })
+
+            result = subprocess.run(
+                ["bash", str(script)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+                env=environment,
+            )
+
+        trace_path = Path(result.stdout.strip())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(trace_path.name, "trace.jsonl")
+        self.assertFalse(trace_path.is_relative_to(ROOT))
+
     def test_local_live_runner_refuses_inherited_noncanonical_demo_identity(self) -> None:
         script = ROOT / "scripts" / "run_local_zetaris_demo.sh"
         with tempfile.TemporaryDirectory() as temp_dir:

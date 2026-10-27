@@ -14,7 +14,10 @@ BASE="${1:-}"
 STATE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/actions-nurse-hmem.XXXXXX")"
 SERVER_PID=""
 SERVER_LOG="$STATE_DIR/server.log"
-ACTIVITY_LOG="demo/activity/trace.jsonl"
+# Keep the smoke proof self-contained. The committed trace is a stable,
+# sanitized example and should not change merely because someone runs this check.
+ACTIVITY_LOG="$STATE_DIR/trace.jsonl"
+STARTED_SERVER=0
 
 cleanup() {
   if [[ -n "$SERVER_PID" ]]; then
@@ -29,15 +32,17 @@ export NURSE_HMEM_DIR="$STATE_DIR/hmem"
 export ZETARIS_FIXTURE_MODE=1
 
 if [[ ! -x meterless/node_modules/.bin/tsx || ! -f meterless/vendor/hmem/src/index.ts ]]; then
-  echo "H-MEM is not vendored. Run: (cd meterless && npm install && npm run setup)" >&2
+  echo "H-MEM is not vendored. Run: (cd meterless && npm ci && npm run setup)" >&2
   exit 1
 fi
 
 if [[ -z "$BASE" ]]; then
+  export NURSE_ACTIVITY_LOG="$ACTIVITY_LOG"
   PORT="${NURSE_SMOKE_PORT:-8791}"
   BASE="http://127.0.0.1:${PORT}"
   NURSE_RULES_ONLY=true "$PYTHON_BIN" -m uvicorn nurse:app --host 127.0.0.1 --port "$PORT" >"$SERVER_LOG" 2>&1 &
   SERVER_PID="$!"
+  STARTED_SERVER=1
   for _ in $(seq 1 50); do
     if curl -fsS "$BASE/api/health" >/dev/null 2>&1; then
       break
@@ -48,7 +53,7 @@ if [[ -z "$BASE" ]]; then
 fi
 
 BEFORE_BYTES=0
-if [[ -f "$ACTIVITY_LOG" ]]; then
+if [[ "$STARTED_SERVER" -eq 1 && -f "$ACTIVITY_LOG" ]]; then
   BEFORE_BYTES=$(wc -c < "$ACTIVITY_LOG")
 fi
 
@@ -114,13 +119,17 @@ assert payload["activity"]["id"].startswith("act-")
 print("triage=rules step=", payload["failing_step"], "activity=", payload["activity"]["id"])
 '
 
-AFTER_BYTES=$(wc -c < "$ACTIVITY_LOG")
-if (( AFTER_BYTES <= BEFORE_BYTES )); then
-  echo "Activity log did not grow: $ACTIVITY_LOG" >&2
-  exit 1
+if [[ "$STARTED_SERVER" -eq 1 ]]; then
+  AFTER_BYTES=$(wc -c < "$ACTIVITY_LOG")
+  if (( AFTER_BYTES <= BEFORE_BYTES )); then
+    echo "Activity log did not grow: $ACTIVITY_LOG" >&2
+    exit 1
+  fi
+  grep -Fq '"event":"triage"' "$ACTIVITY_LOG"
+  grep -Fq '"engine_source":"vendor/hmem"' "$ACTIVITY_LOG"
+  grep -Fq '"mode":"fixture"' "$ACTIVITY_LOG"
+  echo "activity=append-only bytes=${BEFORE_BYTES}->${AFTER_BYTES}"
+else
+  echo "activity=external-server trace=not-inspected"
 fi
-grep -Fq '"event":"triage"' "$ACTIVITY_LOG"
-grep -Fq '"engine_source":"vendor/hmem"' "$ACTIVITY_LOG"
-grep -Fq '"mode":"fixture"' "$ACTIVITY_LOG"
-echo "activity=append-only bytes=${BEFORE_BYTES}->${AFTER_BYTES}"
 echo "SMOKE_AGENTATHON_OK"
