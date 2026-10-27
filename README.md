@@ -25,6 +25,15 @@ Actions Nurse is a first-response tool, not an autonomous repair bot. It identif
 
 The supported fixture set covers checkout authentication, disk full, TypeScript typecheck, Node OOM, and pytest assertion failures.
 
+### Inspectable historic CI context
+
+The [historic repository CI case study](docs/historic-ci-case-study.md) records
+one public Docker Compose smoke failure, the same-commit Rules abstention, and a
+later green CI result through immutable run and commit links. It is metadata
+only: distinct from interactive fixture evidence and from the local Zetaris
+synthetic-reference-row demo. It does not establish root cause or claim an
+automatic change.
+
 ## Architecture at a glance
 
 ```text
@@ -239,10 +248,12 @@ integrations/zetaris/    read-only REST client and reproducible response fixture
 meterless/               H-MEM CLI bridge, seed data, and setup script
 demo/activity/           append-only execution traces
 demo/io/                 recorded fixture input/output for the demo
+demo/real-ci/            sanitized historic repository CI metadata
 docs/zetaris.md          Zetaris credential and fixture-mode guide
 docs/meterless.md        Meterless H-MEM setup and provenance boundaries
 docs/local-live-capture.md  Optional local Zetaris live-proof route
 docs/demo-script.md      90-second judge route
+docs/historic-ci-case-study.md  Historic CI evidence boundary and timeline
 docs/README.md           Current and historical documentation map
 ```
 
