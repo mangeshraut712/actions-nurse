@@ -101,7 +101,7 @@ def run() -> int:
         ),
     }
     print(json.dumps(payload, sort_keys=True))
-    return 0 if linked_ids else 1
+    return 0 if payload["ok"] else 1
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -48,6 +49,16 @@ class ZetarisDemoSeedAssetTests(unittest.TestCase):
         for forbidden in ("DROP ", "DELETE ", "UPDATE ", "TRUNCATE "):
             self.assertNotIn(forbidden, text)
 
+    def test_seed_program_verifies_the_exact_owned_corpus_before_labelling_it_synthetic(self) -> None:
+        source = ROOT / "scripts" / "ZetarisDemoSeed.java"
+        text = source.read_text(encoding="utf-8")
+
+        self.assertIn("EXPECTED_COLUMNS", text)
+        self.assertIn("EXPECTED_ROWS", text)
+        self.assertIn("SELECT * FROM " + '" + DATABASE + "." + TABLE + " ORDER BY observed_at ASC', text)
+        self.assertIn("metadata.getColumnCount()", text)
+        self.assertIn("Canonical synthetic demo corpus mismatch", text)
+
     def test_local_live_runner_requires_an_explicit_bundle_path(self) -> None:
         script = ROOT / "scripts" / "run_local_zetaris_demo.sh"
         self.assertTrue(script.is_file(), "missing local Zetaris demo runner")
@@ -65,6 +76,37 @@ class ZetarisDemoSeedAssetTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("ZETARIS_PLATFORM_DIR", result.stderr)
+
+    def test_local_live_runner_refuses_inherited_noncanonical_demo_identity(self) -> None:
+        script = ROOT / "scripts" / "run_local_zetaris_demo.sh"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            platform = Path(temp_dir)
+            (platform / ".env").write_text(
+                "ZETARIS_ADMIN_EMAIL=demo@example.test\nZETARIS_ADMIN_PASSWORD=not-a-real-password\n",
+                encoding="utf-8",
+            )
+            for key, value in {
+                "ZETARIS_CI_EVIDENCE_TABLE": "other.ci_failure_signatures",
+                "ZETARIS_EVIDENCE_PROVENANCE": "not-synthetic",
+            }.items():
+                with self.subTest(key=key):
+                    environment = dict(os.environ)
+                    environment.update({
+                        "ZETARIS_PLATFORM_DIR": str(platform),
+                        "PYTHON": "/usr/bin/false",
+                        key: value,
+                    })
+                    result = subprocess.run(
+                        ["bash", str(script)],
+                        cwd=ROOT,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                        env=environment,
+                    )
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("owned demo identity", result.stderr)
 
     def test_seed_csv_is_explicitly_synthetic_and_matches_expected_row_count(self) -> None:
         path = ROOT / "demo" / "zetaris" / "ci_failure_signatures.csv"

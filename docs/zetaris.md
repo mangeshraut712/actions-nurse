@@ -17,8 +17,9 @@ ZETARIS_ORG_ID=123
 ZETARIS_API_KEY=replace-with-your-user-created-api-key
 ```
 
-For Zetaris Cloud, use the API base supplied by the organiser or Cloud UI. It
-must end in `/api/v1.0`; the browser UI address belongs in the optional
+For Zetaris Cloud, use the HTTPS API base supplied by the organiser or Cloud UI. It
+must end in `/api/v1.0`; plain HTTP is accepted only for a loopback local runtime.
+The browser UI address belongs in the optional
 `ZETARIS_BASE_URL` and is not used by this direct REST client. Find the numeric
 organisation ID under **Management → Organisation**. Create a user API token
 under **Management → API Tokens** and save it locally: the token is shown only
@@ -60,12 +61,15 @@ memory. It never returns the session token or the platform password. The local
 UI proxy accepts `SELECT` only and returns `records`, which the client
 normalizes to its ordinary `data` response shape.
 
-Evidence responses are limited to three compact rows and redact bearer-style,
-named-secret, and JWT-like text before FastAPI serializes them. The browser
-applies the same defensive redaction before rendering a row, request ID, or SQL.
+Evidence responses are limited to three compact rows projected onto the fixed
+CI-signature schema. Bearer-style, quoted/named-secret, GitHub-token, and
+JWT-like text is redacted before FastAPI serializes it. The browser applies the
+same defensive redaction before rendering a row, request ID, or SQL.
 
-The local mode takes precedence when its variables are present. It is for a
-local evaluation stack, not a way to reuse a browser session or cloud account.
+The local provider is selected only when all three local values are present;
+an incomplete local hint does not override valid direct REST credentials. It
+is for a local evaluation stack, not a way to reuse a browser session or cloud
+account.
 
 ## Verification
 
@@ -77,10 +81,11 @@ python3 -m integrations.zetaris.client
 
 It issues `SELECT 1` and `SHOW LIGHTNING DATABASES`. In local-session mode the
 UI proxy permits `SELECT` only, so preflight uses `SELECT 1` and `SELECT 7 AS
-query_engine_probe` instead. A live result reports `"mode": "live"`. Zetaris
-returns values as strings, so the client keeps row values intact instead of
-coercing numeric fields. A missing or malformed result list becomes an explicit
-fixture fallback, not a successful live claim.
+query_engine_probe` instead. A live result reports `"mode": "live"` only when
+those probes return `1` and `7` respectively. The endpoint exposes a row-free
+summary (mode, provider, reason, and count), never arbitrary upstream result
+cells. A missing or malformed result list becomes an explicit fixture fallback,
+not a successful live claim.
 
 This direct REST request follows the [official runner at commit
 6a2fbaa](https://github.com/zetaris/getting-started/blob/6a2fbaa47c32c9ac33f6584c64b43b146c621bed/scripts/zetaris_sql.py).
@@ -113,11 +118,12 @@ ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
 ```
 
 It uses the bundle's loopback JDBC driver, first validates the existing owned
-object if present, and performs no `DROP`, delete, overwrite, or change to an
-unrelated Zetaris object. Set `ZETARIS_EVIDENCE_PROVENANCE=synthetic-local-demo`
-when demonstrating it. A response remains `mode: "live"` because rows came
-from a real local Zetaris query, while its separate `provenance` field makes the
-synthetic dataset clear.
+object's exact schema and canonical four-row corpus if present, and performs no
+`DROP`, delete, overwrite, or change to an unrelated Zetaris object. The local
+runner pins the owned table and `synthetic-local-demo` provenance; it rejects
+conflicting inherited demo identifiers. A response remains `mode: "live"`
+because rows came from a real local Zetaris query, while its separate
+`provenance` field makes the synthetic dataset clear.
 
 To launch the application without copying a password into the repository:
 

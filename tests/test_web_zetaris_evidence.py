@@ -99,7 +99,10 @@ global.document = { addEventListener: () => {} };
 eval(fs.readFileSync('web/app.js', 'utf8'));
 const bearer = evidenceText('Authorization: Bearer secret-value');
 const jwt = evidenceText('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJsb2NhbCJ9.signaturepart');
-if (bearer.includes('secret-value') || jwt.includes('eyJhbGciOiJIUzI1NiJ9')) process.exit(2);
+const marker = 'ghp_FAKEONLYabcdefghijklmnopqrstuvwx123456';
+const quoted = evidenceText('{"token":"' + marker + '"}');
+const bare = evidenceText('copy ' + marker + ' into CI');
+if (bearer.includes('secret-value') || jwt.includes('eyJhbGciOiJIUzI1NiJ9') || quoted.includes(marker) || bare.includes(marker)) process.exit(2);
 '''
         result = subprocess.run(
             ["node", "-e", probe],

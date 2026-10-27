@@ -1,9 +1,14 @@
 """Contracts for the fresh-store, two-pass H-MEM proof script."""
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import subprocess
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +51,34 @@ class HmemTwoPassDemoTests(unittest.TestCase):
         self.assertIn('"state.json"', source)
         self.assertIn('"ledger.jsonl"', source)
         self.assertIn("persisted_state_verified", source)
+
+    def test_runtime_proof_fails_when_recall_is_linked_but_persistence_is_missing(self) -> None:
+        spec = importlib.util.spec_from_file_location("hmem_two_pass_demo_under_test", ROOT / "scripts" / "hmem_two_pass_demo.py")
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        first = SimpleNamespace(memory={
+            "remembered_ids": ["mem-test-1"],
+            "engine_source": "vendor/hmem",
+            "remember_service": "MemoryMiningService",
+        })
+        second = SimpleNamespace(memory={
+            "recall_ids": ["mem-test-1"],
+            "engine_source": "vendor/hmem",
+            "recall_service": "MemoryRetrievalService",
+        })
+        output = io.StringIO()
+
+        with (
+            patch("memory_bridge.status", return_value={"ready": True, "engine_source": "vendor/hmem"}),
+            patch("nurse.enriched_triage", side_effect=[first, second]),
+            contextlib.redirect_stdout(output),
+        ):
+            exit_code = module.run()
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn('"ok": false', output.getvalue())
 
 
 if __name__ == "__main__":

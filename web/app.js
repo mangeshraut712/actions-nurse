@@ -4,14 +4,23 @@
  */
 
 function evidenceText(value, limit = 360) {
-  const raw = typeof value === 'string' ? value : value == null ? '' : String(value);
+  let raw;
+  if (typeof value === 'string') {
+    raw = value;
+  } else if (value == null) {
+    raw = '';
+  } else {
+    try {
+      raw = JSON.stringify(value);
+    } catch (_) {
+      raw = String(value);
+    }
+  }
   // The API is designed not to return credentials, but never put token-like
   // text into the demo UI if a backend or upstream payload changes.
-  const redacted = raw
-    .replace(/\b(?:authorization\s*[:=]\s*)?bearer\s+\S+/gi, '[redacted]')
-    .replace(/\b(?:api[_-]?key|password|token)\s*[:=]\s*\S+/gi, '[redacted]')
-    .replace(/\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[redacted]');
-  return redacted.length > limit ? `${redacted.slice(0, limit - 1)}…` : redacted;
+  const secretLike = /(?:\b(?:authorization\s*[:=]\s*)?bearer\s+\S+|\b(?:api[_-]?key|password|token)\s*[:=]\s*\S+|["']?(?:authorization|api[_-]?key|password|token|secret|access[_-]?token|refresh[_-]?token|private[_-]?key|client[_-]?secret|credential(?:s)?)["']?\s*[:=]\s*(?:["'][^"']*["']|[^\s,;}\]]+)|\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9_-]{8,}|github_pat_[A-Za-z0-9_]{8,})\b)/i;
+  if (secretLike.test(raw)) return '[redacted]';
+  return raw.length > limit ? `${raw.slice(0, limit - 1)}…` : raw;
 }
 
 function renderZetarisEvidence(zetaris) {
@@ -20,7 +29,7 @@ function renderZetarisEvidence(zetaris) {
   detailsEl.replaceChildren();
 
   const result = zetaris?.result || {};
-  const rowCount = result.row_count;
+  const rowCount = Number.isInteger(result.row_count) && result.row_count >= 0 ? result.row_count : undefined;
   const mode = zetaris?.mode;
   const source = evidenceText(zetaris?.source, 80);
   const provenance = evidenceText(zetaris?.provenance, 80);

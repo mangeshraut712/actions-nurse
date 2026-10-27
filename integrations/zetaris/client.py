@@ -30,6 +30,25 @@ IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){0,2
 BEARER_VALUE = re.compile(r"\b(?:authorization\s*[:=]\s*)?bearer\s+\S+", re.IGNORECASE)
 NAMED_SECRET_VALUE = re.compile(r"\b(?:api[_-]?key|password|token)\s*[:=]\s*\S+", re.IGNORECASE)
 JWT_LIKE_VALUE = re.compile(r"\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")
+QUOTED_SECRET_VALUE = re.compile(
+    r"[\"']?(?:authorization|api[_-]?key|password|token|secret|access[_-]?token|refresh[_-]?token|"
+    r"private[_-]?key|client[_-]?secret|credential(?:s)?)[\"']?\s*[:=]\s*(?:[\"'][^\"']*[\"']|[^\s,;}\]]+)",
+    re.IGNORECASE,
+)
+GITHUB_TOKEN_VALUE = re.compile(
+    r"\b(?:gh[pousr]_[A-Za-z0-9_-]{8,}|github_pat_[A-Za-z0-9_]{8,})\b",
+    re.IGNORECASE,
+)
+EVIDENCE_COLUMNS = (
+    "failure_signature",
+    "failing_step",
+    "occurrences",
+    "latest_recommendation",
+    "source",
+)
+LOCAL_DEMO_EVIDENCE_TABLE = "actions_nurse_demo_20261027_f9de7301.ci_failure_signatures"
+SYNTHETIC_LOCAL_DEMO_PROVENANCE = "synthetic-local-demo"
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 def _truthy(value: str | None) -> bool:
@@ -87,37 +106,109 @@ def _escape_sql_literal(value: str) -> str:
 
 
 def _safe_evidence_text(value: Any, *, limit: int = 800) -> str:
-    """Bound and redact row text before the triage API can serialize it."""
-    text = str(value or "")
-    text = BEARER_VALUE.sub("[redacted]", text)
-    text = NAMED_SECRET_VALUE.sub("[redacted]", text)
-    text = JWT_LIKE_VALUE.sub("[redacted]", text)
+    """Bound and conservatively redact text before the triage API serializes it."""
+    if isinstance(value, (Mapping, list, tuple)):
+        try:
+            text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            text = str(value)
+    else:
+        text = str(value or "")
+    if (
+        BEARER_VALUE.search(text)
+        or NAMED_SECRET_VALUE.search(text)
+        or QUOTED_SECRET_VALUE.search(text)
+        or JWT_LIKE_VALUE.search(text)
+        or GITHUB_TOKEN_VALUE.search(text)
+    ):
+        return "[redacted]"
     return text[:limit]
 
 
-def _safe_evidence_rows(rows: Any) -> list[Any]:
-    """Keep only three compact, JSON-safe evidence rows for a triage response."""
+def _canonical_evidence_column(value: Any) -> str | None:
+    """Map a returned column name to the fixed, query-owned evidence schema."""
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
+    return normalized if normalized in EVIDENCE_COLUMNS else None
+
+
+def _safe_occurrences(value: Any) -> int | float | str:
+    """Keep occurrence values compact without accepting arbitrary structured text."""
+    if isinstance(value, bool) or value is None:
+        return ""
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    return text if re.fullmatch(r"\d{1,12}", text) else ""
+
+
+def _safe_evidence_rows(rows: Any) -> list[dict[str, Any]]:
+    """Project query rows onto the fixed evidence schema and redact their values."""
     if not isinstance(rows, list):
         return []
-    safe_rows: list[Any] = []
+    safe_rows: list[dict[str, Any]] = []
     for row in rows[:3]:
         if isinstance(row, Mapping):
-            safe_rows.append({
-                _safe_evidence_text(key, limit=120): _safe_evidence_text(value)
-                if not isinstance(value, (bool, int, float)) and value is not None
-                else value
-                for key, value in list(row.items())[:12]
-            })
+            raw_values: dict[str, Any] = {}
+            for key, value in row.items():
+                column = _canonical_evidence_column(key)
+                if column and column not in raw_values:
+                    raw_values[column] = value
         elif isinstance(row, (list, tuple)):
-            safe_rows.append([
-                _safe_evidence_text(value)
-                if not isinstance(value, (bool, int, float)) and value is not None
-                else value
-                for value in row[:12]
-            ])
+            raw_values = dict(zip(EVIDENCE_COLUMNS, row, strict=False))
         else:
-            safe_rows.append(_safe_evidence_text(row))
+            continue
+        if not raw_values:
+            continue
+        safe_rows.append({
+            column: _safe_occurrences(raw_values[column])
+            if column == "occurrences"
+            else _safe_evidence_text(raw_values[column])
+            for column in EVIDENCE_COLUMNS
+            if column in raw_values
+        })
     return safe_rows
+
+
+def _probe_value_matches(rows: Any, expected: int) -> bool:
+    """Check a deterministic preflight SELECT without returning upstream cells."""
+    if not isinstance(rows, list):
+        return False
+    for row in rows:
+        if isinstance(row, Mapping):
+            values = row.values()
+        elif isinstance(row, (list, tuple)):
+            values = row
+        else:
+            values = (row,)
+        for value in values:
+            if not isinstance(value, (Mapping, list, tuple)) and str(value).strip() == str(expected):
+                return True
+    return False
+
+
+def _safe_preflight_check(name: str, result: Mapping[str, Any], *, expected_probe: int | None = None) -> dict[str, Any]:
+    """Return a row-free summary of one fixed, read-only preflight query."""
+    raw_rows = result.get("data")
+    row_count = len(raw_rows) if isinstance(raw_rows, list) else 0
+    mode = str(result.get("mode") or "unavailable")
+    ok = bool(result.get("ok"))
+    reason = ""
+    if mode == "live" and expected_probe is not None and not _probe_value_matches(raw_rows, expected_probe):
+        mode = "unavailable"
+        ok = False
+        reason = "unexpected_probe_value"
+
+    summary: dict[str, Any] = {"ok": ok, "mode": mode, "row_count": row_count}
+    if mode == "live" and result.get("provider") in {"direct-rest", "local-session"}:
+        summary["provider"] = result["provider"]
+    if reason:
+        summary["reason"] = reason
+    elif mode == "fixture":
+        if result.get("fixture"):
+            summary["fixture"] = _safe_evidence_text(result["fixture"], limit=120)
+        if result.get("fallback_reason"):
+            summary["reason"] = _safe_evidence_text(result["fallback_reason"], limit=120)
+    return {"name": name, "result": summary}
 
 
 @dataclass(frozen=True)
@@ -146,14 +237,25 @@ class ZetarisConfig:
 
     @property
     def valid_rest_url(self) -> bool:
-        return self.rest_url.rstrip("/").endswith("/api/v1.0")
+        parsed = urlparse(self.rest_url)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or parsed.path.rstrip("/") != "/api/v1.0"
+        ):
+            return False
+        return parsed.scheme == "https" or parsed.hostname in LOOPBACK_HOSTS
 
     @property
     def valid_local_ui_url(self) -> bool:
         parsed = urlparse(self.local_ui_url)
         return (
             parsed.scheme == "http"
-            and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+            and parsed.hostname in LOOPBACK_HOSTS
             and not parsed.username
             and not parsed.password
         )
@@ -161,6 +263,18 @@ class ZetarisConfig:
     @property
     def valid_evidence_table(self) -> bool:
         return bool(IDENTIFIER.fullmatch(self.evidence_table))
+
+    @property
+    def synthetic_local_demo_requested(self) -> bool:
+        return self.evidence_provenance == SYNTHETIC_LOCAL_DEMO_PROVENANCE
+
+    @property
+    def owned_synthetic_local_demo(self) -> bool:
+        return (
+            self.synthetic_local_demo_requested
+            and self.evidence_table == LOCAL_DEMO_EVIDENCE_TABLE
+            and self.local_session_ready
+        )
 
 
 class ZetarisClient:
@@ -191,19 +305,21 @@ class ZetarisClient:
             }
         if not self.config.valid_evidence_table:
             return {"mode": "fixture", "configured": False, "reason": "invalid_evidence_table"}
+        if self.config.synthetic_local_demo_requested and not self.config.owned_synthetic_local_demo:
+            return {"mode": "fixture", "configured": False, "reason": "synthetic_demo_requires_owned_table"}
+        if self.config.local_session_ready and self.config.valid_local_ui_url:
+            return {"mode": "live", "configured": True, "reason": "local_session_ready", "provider": "local-session"}
+        if self.config.credentials_ready:
+            if not self.config.valid_rest_url:
+                return {"mode": "fixture", "configured": False, "reason": "rest_url_must_be_https_or_loopback_http"}
+            if not re.fullmatch(r"[0-9]+", self.config.org_id):
+                return {"mode": "fixture", "configured": False, "reason": "org_id_must_be_numeric"}
+            return {"mode": "live", "configured": True, "reason": "credentials_present", "provider": "direct-rest"}
         if self.config.local_session_requested:
             if not self.config.valid_local_ui_url:
                 return {"mode": "fixture", "configured": False, "reason": "local_ui_must_be_loopback"}
-            if not self.config.local_session_ready:
-                return {"mode": "fixture", "configured": False, "reason": "missing_local_session_credentials"}
-            return {"mode": "live", "configured": True, "reason": "local_session_ready", "provider": "local-session"}
-        if not self.config.credentials_ready:
-            return {"mode": "fixture", "configured": False, "reason": "missing_credentials"}
-        if not self.config.valid_rest_url:
-            return {"mode": "fixture", "configured": False, "reason": "rest_url_must_end_in_api_v1_0"}
-        if not re.fullmatch(r"[0-9]+", self.config.org_id):
-            return {"mode": "fixture", "configured": False, "reason": "org_id_must_be_numeric"}
-        return {"mode": "live", "configured": True, "reason": "credentials_present"}
+            return {"mode": "fixture", "configured": False, "reason": "missing_local_session_credentials"}
+        return {"mode": "fixture", "configured": False, "reason": "missing_credentials"}
 
     def _fixture_name(self, sql: str) -> str:
         normalized = " ".join(sql.upper().split())
@@ -256,21 +372,22 @@ class ZetarisClient:
             return self._fixture_result(statement, reason="http_client_unavailable")
 
         request_id = str(uuid.uuid4())
-        if self.config.local_session_requested:
+        if state.get("provider") == "local-session":
             return self._run_local_session_sql(httpx, statement, request_id)
 
         try:
-            response = httpx.post(
-                f"{self.config.rest_url}{RUN_QUERY_PATH}",
-                json={"queryId": str(uuid.uuid4()), "sql": statement, "source": "SqlEditor", "limit": 100},
-                headers={
-                    "Authorization": f"Bearer {self.config.api_key}",
-                    "X-Org-ID": self.config.org_id,
-                    "X-Request-ID": request_id,
-                    "Content-Type": "application/json",
-                },
-                timeout=self.timeout_seconds,
-            )
+            with httpx.Client(trust_env=False, follow_redirects=False) as session:
+                response = session.post(
+                    f"{self.config.rest_url}{RUN_QUERY_PATH}",
+                    json={"queryId": str(uuid.uuid4()), "sql": statement, "source": "SqlEditor", "limit": 100},
+                    headers={
+                        "Authorization": f"Bearer {self.config.api_key}",
+                        "X-Org-ID": self.config.org_id,
+                        "X-Request-ID": request_id,
+                        "Content-Type": "application/json",
+                    },
+                    timeout=self.timeout_seconds,
+                )
         except httpx.RequestError:
             return self._fixture_result(statement, reason="network_error")
 
@@ -367,20 +484,26 @@ class ZetarisClient:
         }
 
     def preflight(self) -> dict[str, Any]:
-        """Run the two documented, read-only Zetaris access checks."""
-        checks = [{"name": "select_1", "result": self.run_sql("SELECT 1")}]
-        if self.config.local_session_requested:
+        """Run fixed read-only checks and return summaries without upstream rows."""
+        provider = self.status().get("provider")
+        checks = [_safe_preflight_check("select_1", self.run_sql("SELECT 1"), expected_probe=1)]
+        if provider == "local-session":
             # The local UI proxy deliberately accepts SELECT requests only. A
             # distinct SELECT confirms the same UI -> API -> driver path without
             # incorrectly reporting a rejected SHOW statement as a platform
             # outage.
-            checks.append({"name": "local_query_engine", "result": self.run_sql("SELECT 7 AS query_engine_probe")})
+            checks.append(_safe_preflight_check(
+                "local_query_engine",
+                self.run_sql("SELECT 7 AS query_engine_probe"),
+                expected_probe=7,
+            ))
         else:
-            checks.append({"name": "lightning_databases", "result": self.run_sql("SHOW LIGHTNING DATABASES")})
+            checks.append(_safe_preflight_check("lightning_databases", self.run_sql("SHOW LIGHTNING DATABASES")))
         modes = {check["result"]["mode"] for check in checks}
+        all_ok = all(bool(check["result"].get("ok")) for check in checks)
         return {
-            "ok": all(bool(check["result"].get("ok")) for check in checks),
-            "mode": "live" if modes == {"live"} else "fixture",
+            "ok": all_ok,
+            "mode": "live" if all_ok and modes == {"live"} else "unavailable" if "unavailable" in modes else "fixture",
             "read_only": True,
             "checks": checks,
         }
@@ -412,9 +535,15 @@ class ZetarisClient:
             "data": safe_rows,
             "row_count": len(safe_rows),
         }
-        provenance = self.config.evidence_provenance or (
-            "local-session-unclassified" if self.config.local_session_requested else "unclassified"
+        provenance = (
+            SYNTHETIC_LOCAL_DEMO_PROVENANCE
+            if self.config.owned_synthetic_local_demo
+            else self.config.evidence_provenance
+            if self.config.evidence_provenance != SYNTHETIC_LOCAL_DEMO_PROVENANCE
+            else "unclassified"
         )
+        if not provenance:
+            provenance = "local-session-unclassified" if result.get("provider") == "local-session" else "unclassified"
         return {
             "mode": result["mode"],
             "source": (

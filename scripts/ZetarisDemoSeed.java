@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 /**
  * Explicitly opt-in seed program for the local Actions Nurse demo dataset.
@@ -19,7 +20,31 @@ public final class ZetarisDemoSeed {
     static final String TABLE = "ci_failure_signatures";
     static final String CSV_URI = "file:///home/zetaris/customer-data/shared/actions-nurse-demo/ci_failure_signatures.csv";
     static final String SYNTHETIC_SOURCE = "synthetic local Actions Nurse demo corpus";
-    static final int EXPECTED_ROWS = 4;
+    static final String[] EXPECTED_COLUMNS = {
+            "failure_signature", "failing_step", "occurrences", "latest_recommendation", "source", "observed_at"
+    };
+    static final String[][] EXPECTED_ROWS = {
+            {
+                    "TS2305 missing export after merge", "Typecheck / tsc", "3",
+                    "Align named exports and imports, then rerun npm run typecheck.",
+                    SYNTHETIC_SOURCE, "2026-10-27T00:00:00Z"
+            },
+            {
+                    "pytest assertion mismatch in dependency scoring", "Unit tests / pytest", "2",
+                    "Recompute the expected fixture value before changing production logic.",
+                    SYNTHETIC_SOURCE, "2026-10-27T00:01:00Z"
+            },
+            {
+                    "ENOSPC while writing build cache", "Runner filesystem", "2",
+                    "Prune oversized cache and artifact output before rerunning the job.",
+                    SYNTHETIC_SOURCE, "2026-10-27T00:02:00Z"
+            },
+            {
+                    "could not read Username during checkout", "Checkout / repository access", "2",
+                    "Use a repository-scoped read-only credential for the needed dependency.",
+                    SYNTHETIC_SOURCE, "2026-10-27T00:03:00Z"
+            }
+    };
 
     private ZetarisDemoSeed() {}
 
@@ -87,21 +112,39 @@ public final class ZetarisDemoSeed {
     }
 
     private static void verifyOwnedSyntheticRows(Statement statement) throws SQLException {
-        long allRows = scalarCount(statement, "SELECT COUNT(*) AS all_rows FROM " + DATABASE + "." + TABLE);
-        long markedRows = scalarCount(statement,
-                "SELECT COUNT(*) AS marked_rows FROM " + DATABASE + "." + TABLE
-                        + " WHERE source = '" + SYNTHETIC_SOURCE + "'");
-        if (allRows != EXPECTED_ROWS || markedRows != EXPECTED_ROWS) {
-            throw new IllegalStateException("Existing demo table is not the expected synthetic corpus; refusing to change it.");
-        }
-    }
-
-    private static long scalarCount(Statement statement, String sql) throws SQLException {
-        try (ResultSet rows = statement.executeQuery(sql)) {
-            if (!rows.next()) {
-                throw new IllegalStateException("Expected a count result from Zetaris.");
+        try (ResultSet rows = statement.executeQuery(
+                "SELECT * FROM " + DATABASE + "." + TABLE + " ORDER BY observed_at ASC")) {
+            ResultSetMetaData metadata = rows.getMetaData();
+            if (metadata.getColumnCount() != EXPECTED_COLUMNS.length) {
+                throw new IllegalStateException("Canonical synthetic demo corpus mismatch; refusing to change it.");
             }
-            return rows.getLong(1);
+            for (int column = 1; column <= EXPECTED_COLUMNS.length; column++) {
+                String label = metadata.getColumnLabel(column);
+                if (label == null || label.isBlank()) {
+                    label = metadata.getColumnName(column);
+                }
+                if (label == null || !EXPECTED_COLUMNS[column - 1].equals(label.toLowerCase(Locale.ROOT))) {
+                    throw new IllegalStateException("Canonical synthetic demo corpus mismatch; refusing to change it.");
+                }
+            }
+
+            int rowIndex = 0;
+            while (rows.next()) {
+                if (rowIndex >= EXPECTED_ROWS.length) {
+                    throw new IllegalStateException("Canonical synthetic demo corpus mismatch; refusing to change it.");
+                }
+                for (int column = 1; column <= EXPECTED_COLUMNS.length; column++) {
+                    String actual = rows.getString(column);
+                    String expected = EXPECTED_ROWS[rowIndex][column - 1];
+                    if (!expected.equals(actual)) {
+                        throw new IllegalStateException("Canonical synthetic demo corpus mismatch; refusing to change it.");
+                    }
+                }
+                rowIndex++;
+            }
+            if (rowIndex != EXPECTED_ROWS.length) {
+                throw new IllegalStateException("Canonical synthetic demo corpus mismatch; refusing to change it.");
+            }
         }
     }
 
@@ -109,7 +152,7 @@ public final class ZetarisDemoSeed {
         System.out.println("demo_seed_status=" + status
                 + " database=" + DATABASE
                 + " table=" + TABLE
-                + " row_count=" + EXPECTED_ROWS
+                + " row_count=" + EXPECTED_ROWS.length
                 + " provenance=synthetic-local-demo");
     }
 }

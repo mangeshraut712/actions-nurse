@@ -99,7 +99,7 @@ ZETARIS_ORG_ID=your-org-id
 ZETARIS_API_KEY=your-api-key
 ```
 
-The client only issues read-only verification/evidence queries (`SELECT 1`, `SHOW LIGHTNING DATABASES`, and the configured evidence query). It falls back to labeled fixture responses if credentials are absent or an authentication request fails. Details and troubleshooting are in [docs/zetaris.md](docs/zetaris.md).
+The client only issues read-only verification/evidence queries (`SELECT 1`, `SHOW LIGHTNING DATABASES`, and the configured evidence query). Direct remote REST requires HTTPS; loopback local evaluation may use HTTP. It falls back to labeled fixture responses if credentials are absent or an authentication request fails. Details and troubleshooting are in [docs/zetaris.md](docs/zetaris.md).
 
 For an already-running local Zetaris evaluation stack, no new API token is
 needed. Seed the clearly labeled synthetic demo corpus once, then launch the
@@ -114,10 +114,11 @@ ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
 
 This uses real local Zetaris queries, but the four demo rows are newly authored
 synthetic data and responses explicitly report `provenance: synthetic-local-demo`.
-The seed tool owns only its uniquely named demo schema/table and refuses to
-replace mismatched local data.
+The seed tool owns only its uniquely named demo schema/table, verifies the
+canonical four-row corpus before labelling it synthetic, and refuses to replace
+mismatched local data.
 
-For Docker Compose, pass that same ignored file explicitly so only the declared runtime values are interpolated into the container; optional Zetaris UI-proxy credentials are not injected:
+For Docker Compose, pass that same ignored file explicitly so only the declared runtime values are interpolated into the container; optional Zetaris UI-proxy credentials are not injected. The default published app port is loopback-only:
 
 ```bash
 docker compose --env-file .env.local up --build
@@ -184,7 +185,7 @@ H-MEM persists local state under the ignored memory directory. It records and re
 
 ### Zetaris
 
-The small Python client reads `.env` followed by `.env.local`, then sends read-only Lightning SQL over Zetaris REST with a request ID. A separate local-session provider is restricted to loopback and obtains a short-lived UI session per query without creating an API token. `preflight()` runs `SELECT 1` and `SHOW LIGHTNING DATABASES` through direct REST, or two `SELECT` probes through local UI; triage attaches a narrowly scoped evidence query. Fixture mode has the identical response shape and carries `mode: "fixture"` so a judge can distinguish a fixture from real local or cloud data. The local demo reports `provenance: synthetic-local-demo` rather than claiming synthetic rows are CI history.
+The small Python client reads `.env` followed by `.env.local`, then sends read-only Lightning SQL over Zetaris REST with a request ID. Direct remote REST requires HTTPS and ignores ambient proxy settings; a separate local-session provider is restricted to loopback and obtains a short-lived UI session per query without creating an API token. `preflight()` runs `SELECT 1` and `SHOW LIGHTNING DATABASES` through direct REST, or two validated `SELECT` probes through local UI, and returns no raw upstream rows. Triage attaches a narrowly scoped evidence query. Fixture mode has the identical response shape and carries `mode: "fixture"` so a judge can distinguish a fixture from real local or cloud data. The local demo reports `provenance: synthetic-local-demo` only for its owned, validated corpus rather than claiming synthetic rows are CI history.
 
 ### Gemma 4 and Rules
 
