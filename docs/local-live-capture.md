@@ -28,6 +28,9 @@ ZETARIS_PLATFORM_DIR=/path/to/zetaris-platform \
 ```
 
 Open `http://127.0.0.1:8787`. Use `NURSE_PORT` if another local port is needed.
+The runner uses a temporary activity trace unless `NURSE_ACTIVITY_LOG` is
+deliberately set, so this capture route does not modify the committed sample
+trace.
 
 ## 60-second route
 

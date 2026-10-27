@@ -21,5 +21,5 @@ Actions Nurse is an MIT-licensed FastAPI app and composite GitHub Action for fir
 - [Composite Action](../action/action.yml)
 - [Failed-workflow automation](../.github/workflows/actions-nurse.yml)
 - [CI checks and Docker Compose smoke](../.github/workflows/ci.yml)
-- [Current verification and demo status](CROSSCHECK.md)
+- [Historical verification record](CROSSCHECK.md)
 - [MIT license](../LICENSE)

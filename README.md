@@ -118,7 +118,16 @@ The seed tool owns only its uniquely named demo schema/table, verifies the
 canonical four-row corpus before labelling it synthetic, and refuses to replace
 mismatched local data.
 
-For Docker Compose, pass that same ignored file explicitly so only the declared runtime values are interpolated into the container; optional Zetaris UI-proxy credentials are not injected. The default published app port is loopback-only:
+For the fixture/offline Docker Compose path, no local environment file is
+needed. The default published app port is loopback-only:
+
+```bash
+docker compose up --build
+```
+
+After copying and filling `.env.local` for an optional direct-REST Zetaris or
+Gemini configuration, pass it explicitly so only declared runtime values are
+interpolated into the container:
 
 ```bash
 docker compose --env-file .env.local up --build
@@ -153,6 +162,26 @@ ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true bash scripts/smoke_agentathon.sh
 ```
 
 With no argument, the script starts an isolated Rules-only server on port `8791`; pass an existing base URL as its first argument to reuse another local server. It triages `fixtures/npm-typecheck.txt` end to end, checks the real H-MEM seed/ask path, runs a Zetaris preflight (explicit fixture mode is a passing outcome), and verifies that the append-only activity trace grew. The script does not require a Gemini key or Zetaris credentials.
+
+When the smoke path starts its own server, it writes the activity trace into
+temporary state rather than modifying the committed sanitized example at
+`demo/activity/trace.jsonl`. When given an existing base URL, it verifies the
+HTTP response but intentionally does not inspect that server's local trace.
+
+## Verify a checkout
+
+From the repository root, the fast local checks are:
+
+```bash
+python3 -m unittest discover -s tests -v
+node --check web/app.js
+docker compose config --quiet
+ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true bash scripts/smoke_agentathon.sh
+```
+
+The sponsor smoke command requires the documented Meterless setup, starts only
+a temporary loopback server when no base URL is supplied, and leaves tracked
+demo artifacts unchanged.
 
 Committed, sanitized examples live in:
 
@@ -211,7 +240,10 @@ meterless/               H-MEM CLI bridge, seed data, and setup script
 demo/activity/           append-only execution traces
 demo/io/                 recorded fixture input/output for the demo
 docs/zetaris.md          Zetaris credential and fixture-mode guide
+docs/meterless.md        Meterless H-MEM setup and provenance boundaries
+docs/local-live-capture.md  Optional local Zetaris live-proof route
 docs/demo-script.md      90-second judge route
+docs/README.md           Current and historical documentation map
 ```
 
 MIT licensed. Built for the Open Agent Hackathon 2026 Wildcard [Tinkerer] track.

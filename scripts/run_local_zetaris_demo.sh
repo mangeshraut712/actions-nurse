@@ -37,5 +37,12 @@ export ZETARIS_EVIDENCE_PROVENANCE="$DEMO_PROVENANCE"
 : "${ZETARIS_LOCAL_ADMIN_EMAIL:?Missing local administrator email.}"
 : "${ZETARIS_LOCAL_ADMIN_PASSWORD:?Missing local administrator password.}"
 
+# This launcher is a demo helper. Keep its new activity records outside the
+# repository unless a caller deliberately supplies a different local path.
+if [[ -z "${NURSE_ACTIVITY_LOG:-}" ]]; then
+  RUNTIME_STATE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/actions-nurse-zetaris-demo.XXXXXX")"
+  export NURSE_ACTIVITY_LOG="$RUNTIME_STATE_DIR/trace.jsonl"
+fi
+
 cd "$ROOT"
 exec "${PYTHON:-python3}" -m uvicorn nurse:app --host 127.0.0.1 --port "${NURSE_PORT:-8787}"
