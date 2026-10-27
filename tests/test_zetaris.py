@@ -13,6 +13,26 @@ from unittest.mock import Mock, patch
 from integrations.zetaris.client import ZetarisClient, load_environment, validate_read_only_sql
 
 
+class LocalHttpx:
+    """Minimal httpx double that records proxy isolation for local sessions."""
+
+    RequestError = OSError
+
+    def __init__(self, responses: list[object]) -> None:
+        self.post = Mock(side_effect=responses)
+        self.client_options: list[dict[str, object]] = []
+
+    def Client(self, **options: object) -> "LocalHttpx":
+        self.client_options.append(options)
+        return self
+
+    def __enter__(self) -> "LocalHttpx":
+        return self
+
+    def __exit__(self, *_: object) -> bool:
+        return False
+
+
 class ZetarisClientTests(unittest.TestCase):
     def test_env_local_overrides_env_while_explicit_shell_values_stay_highest(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -79,6 +99,215 @@ class ZetarisClientTests(unittest.TestCase):
         self.assertEqual(headers["X-Org-ID"], "123")
         self.assertEqual(uuid.UUID(headers["X-Request-ID"]).version, 4)
         self.assertNotEqual(headers["X-Request-ID"], body["queryId"])
+
+    def test_local_session_uses_loopback_login_then_ui_proxy_without_returning_the_token(self) -> None:
+        login = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"accessToken": "session-token-not-for-output", "orgId": 42},
+        )
+        query = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"data": [{"one": "1"}]},
+        )
+        fake_httpx = LocalHttpx([login, query])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.run_sql("SELECT 1")
+
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(result["provider"], "local-session")
+        self.assertEqual(result["data"], [{"one": "1"}])
+        self.assertNotIn("session-token-not-for-output", repr(result))
+        self.assertEqual(post.call_args_list[0].args[0], "http://127.0.0.1:3000/api/auth/login")
+        self.assertEqual(post.call_args_list[1].args[0], "http://127.0.0.1:3000/api/proxy/query/sql/start")
+        self.assertEqual(post.call_args_list[1].kwargs["json"], {"select": "SELECT 1", "pageLimit": 100})
+        self.assertEqual(post.call_args_list[1].kwargs["headers"]["X-Org-ID"], "42")
+        self.assertEqual(fake_httpx.client_options, [{"trust_env": False}, {"trust_env": False}])
+
+    def test_local_session_rejects_non_loopback_ui_url(self) -> None:
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "https://outside.example",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        self.assertEqual(client.status()["mode"], "fixture")
+        self.assertEqual(client.status()["reason"], "local_ui_must_be_loopback")
+
+    def test_forced_fixture_can_report_local_configuration_without_exposing_it(self) -> None:
+        client = ZetarisClient(environment={
+            "ZETARIS_FIXTURE_MODE": "1",
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        status = client.status()
+
+        self.assertEqual(status, {"mode": "fixture", "configured": True, "reason": "forced"})
+        self.assertNotIn("not-a-real-password", repr(status))
+
+    def test_local_session_accepts_the_platform_id_token_login_field(self) -> None:
+        login = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"idToken": "session-token-not-for-output", "orgId": 42},
+        )
+        query = types.SimpleNamespace(status_code=200, json=lambda: {"data": []})
+        fake_httpx = LocalHttpx([login, query])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://localhost:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.run_sql("SELECT 1")
+
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(post.call_args_list[1].kwargs["headers"]["Authorization"], "Bearer session-token-not-for-output")
+
+    def test_local_session_normalizes_platform_records_without_returning_query_token(self) -> None:
+        login = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"idToken": "session-token-not-for-output", "orgId": 42},
+        )
+        query = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{"one": "1"}], "queryToken": "query-token-not-for-output"},
+        )
+        fake_httpx = LocalHttpx([login, query])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.run_sql("SELECT 1")
+
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(result["data"], [{"one": "1"}])
+        self.assertNotIn("query-token-not-for-output", repr(result))
+
+    def test_local_session_login_rejection_is_an_explicit_fixture_fallback(self) -> None:
+        login = types.SimpleNamespace(status_code=401, json=lambda: {"message": "not used"})
+        fake_httpx = LocalHttpx([login])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.run_sql("SELECT 1")
+
+        self.assertEqual(result["mode"], "fixture")
+        self.assertEqual(result["fallback_reason"], "local_login_auth_error")
+        self.assertNotIn("not-a-real-password", repr(result))
+
+    def test_ci_evidence_uses_a_validated_configured_table_name(self) -> None:
+        client = ZetarisClient(environment={"ZETARIS_CI_EVIDENCE_TABLE": "actions_nurse_demo.ci_failure_signatures"})
+
+        result = client.query_ci_evidence("Typecheck / tsc", ["TS2305"])
+
+        self.assertIn("FROM actions_nurse_demo.ci_failure_signatures", result["result"]["sql"])
+
+    def test_invalid_ci_evidence_table_name_cannot_reach_live_querying(self) -> None:
+        client = ZetarisClient(environment={
+            "ZETARIS_CI_EVIDENCE_TABLE": "ci_failure_signatures; DROP TABLE anything",
+            "ZETARIS_REST_URL": "https://zetaris.example/api/v1.0",
+            "ZETARIS_ORG_ID": "123",
+            "ZETARIS_API_KEY": "not-a-real-key",
+        })
+
+        result = client.query_ci_evidence("Typecheck / tsc")
+
+        self.assertEqual(result["mode"], "fixture")
+        self.assertEqual(result["result"]["fallback_reason"], "invalid_evidence_table")
+
+    def test_local_evidence_marks_configured_synthetic_provenance(self) -> None:
+        login = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"idToken": "session-token-not-for-output", "orgId": 42},
+        )
+        query = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{"failing_step": "Typecheck / tsc"}]},
+        )
+        fake_httpx = LocalHttpx([login, query])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+            "ZETARIS_CI_EVIDENCE_TABLE": "actions_nurse_demo.ci_failure_signatures",
+            "ZETARIS_EVIDENCE_PROVENANCE": "synthetic-local-demo",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.query_ci_evidence("Typecheck / tsc")
+
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(result["source"], "zetaris-local-session")
+        self.assertEqual(result["provenance"], "synthetic-local-demo")
+
+    def test_live_evidence_redacts_secret_like_row_values_before_returning_them(self) -> None:
+        login = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"idToken": "session-token-not-for-output", "orgId": 42},
+        )
+        query = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"records": [{
+                "failing_step": "Typecheck / tsc",
+                "failure_signature": "Authorization: Bearer live-row-secret",
+                "latest_recommendation": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJsb2NhbCJ9.signaturepart",
+                "source": "synthetic local demo",
+            }]},
+        )
+        fake_httpx = LocalHttpx([login, query])
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+            "ZETARIS_EVIDENCE_PROVENANCE": "synthetic-local-demo",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.query_ci_evidence("Typecheck / tsc")
+
+        encoded = repr(result)
+        self.assertEqual(result["mode"], "live")
+        self.assertNotIn("live-row-secret", encoded)
+        self.assertNotIn("eyJhbGciOiJIUzI1NiJ9", encoded)
+        self.assertEqual(result["result"]["row_count"], 1)
+
+    def test_local_preflight_uses_select_only_probes_supported_by_the_ui_proxy(self) -> None:
+        login = types.SimpleNamespace(status_code=200, json=lambda: {"idToken": "token", "orgId": 42})
+        query = types.SimpleNamespace(status_code=200, json=lambda: {"records": [{"value": "1"}]})
+        fake_httpx = LocalHttpx([login, query, login, query])
+        post = fake_httpx.post
+        client = ZetarisClient(environment={
+            "ZETARIS_LOCAL_UI_URL": "http://127.0.0.1:3000",
+            "ZETARIS_LOCAL_ADMIN_EMAIL": "local-admin@example.test",
+            "ZETARIS_LOCAL_ADMIN_PASSWORD": "not-a-real-password",
+        })
+
+        with patch.dict(sys.modules, {"httpx": fake_httpx}):
+            result = client.preflight()
+
+        self.assertEqual(result["mode"], "live")
+        self.assertEqual(result["checks"][1]["name"], "local_query_engine")
+        self.assertEqual(post.call_args_list[3].kwargs["json"]["select"], "SELECT 7 AS query_engine_probe")
 
     def test_empty_database_list_is_a_valid_live_response(self) -> None:
         response = types.SimpleNamespace(status_code=200, json=lambda: {"data": []})

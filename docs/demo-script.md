@@ -7,7 +7,7 @@ The reliable route is deliberately key-free: Rules-only triage, H-MEM installed 
 In one terminal:
 
 ```bash
-cd meterless && npm ci && npm run setup && npm run memory -- seed && cd ..
+cd meterless && npm ci && npm run setup && cd ..
 ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
@@ -41,14 +41,13 @@ Point to the failing step and the suggested local `npm run typecheck` check. Do 
 
 ## 0:45–1:05 · Meterless H-MEM recall
 
-**Show:** the prior-failure recall in triage, then run:
+**Show:** a clean two-pass recall, then run:
 
 ```bash
-cd meterless
-npm run memory -- ask "TypeScript missing exports typecheck"
+bash scripts/demo_hmem_two_pass.sh
 ```
 
-> “The recall is backed by real Meterless H-MEM. The startup line identifies `vendor/hmem`, and the answer carries memory IDs as provenance. Triage remembers this diagnosis through `MemoryMiningService`; recall uses `MemoryRetrievalService`; its history is available from the append-only `TrustLedgerService`.”
+> “The first pass records a prior triage through `MemoryMiningService`; the second recalls that same ID through `MemoryRetrievalService`. The linked IDs are provenance, not proof that a repair was applied or that diagnostic accuracy increased. Its history is available from the append-only `TrustLedgerService`.”
 
 If asked about maintenance, point to the preview-only `SleepCycleService` command instead of running a destructive operation.
 
@@ -66,7 +65,7 @@ tail -n 1 demo/activity/trace.jsonl
 
 **Show:** the smoke script’s final `SMOKE_AGENTATHON_OK` line, then the README sponsor section.
 
-> “The whole fixture path is green without cloud secrets: failed log to diagnosis, evidence, memory recall, and audit trace. Zetaris supplies optional federated evidence; Meterless makes past fixes reusable; Gemma stays at the center of the explanation path.”
+> “The whole fixture path is green without cloud secrets: failed log to diagnosis, evidence, prior-triage recall, and audit trace. Zetaris supplies optional federated evidence; Meterless preserves provenance for prior triages; Gemma stays at the center of the explanation path.”
 
 ## Useful backup lines
 

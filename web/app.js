@@ -3,6 +3,103 @@
  * Open Agent Hackathon 2026 Wildcard [Tinkerer]
  */
 
+function evidenceText(value, limit = 360) {
+  const raw = typeof value === 'string' ? value : value == null ? '' : String(value);
+  // The API is designed not to return credentials, but never put token-like
+  // text into the demo UI if a backend or upstream payload changes.
+  const redacted = raw
+    .replace(/\b(?:authorization\s*[:=]\s*)?bearer\s+\S+/gi, '[redacted]')
+    .replace(/\b(?:api[_-]?key|password|token)\s*[:=]\s*\S+/gi, '[redacted]')
+    .replace(/\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[redacted]');
+  return redacted.length > limit ? `${redacted.slice(0, limit - 1)}…` : redacted;
+}
+
+function renderZetarisEvidence(zetaris) {
+  const evidenceEl = document.getElementById('zetarisEvidence');
+  const detailsEl = document.getElementById('zetarisEvidenceDetails');
+  detailsEl.replaceChildren();
+
+  const result = zetaris?.result || {};
+  const rowCount = result.row_count;
+  const mode = zetaris?.mode;
+  const source = evidenceText(zetaris?.source, 80);
+  const provenance = evidenceText(zetaris?.provenance, 80);
+  const isLive = mode === 'live';
+  const isFixture = mode === 'fixture';
+  const sourceLabel = isLive
+    ? source === 'zetaris-local-session'
+      ? 'live local read-only query'
+      : 'live read-only query'
+    : isFixture
+      ? 'recorded reference fixture'
+      : mode === 'unavailable'
+        ? 'unavailable'
+        : `status: ${evidenceText(mode, 80)}`;
+  const provenanceLabel = isFixture
+    ? 'synthetic reference data'
+    : isLive
+      ? provenance === 'synthetic-local-demo'
+        ? 'synthetic local demo rows'
+        : provenance
+          ? `${provenance} provenance`
+          : 'provenance not classified'
+      : 'no evidence returned';
+
+  evidenceEl.textContent = mode
+    ? `Zetaris ${sourceLabel} · ${provenanceLabel}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${result.fixture ? ` · ${evidenceText(result.fixture, 120)}` : ''}.`
+    : 'Zetaris evidence was not requested for this result.';
+
+  if (!mode) return;
+
+  const expectedStep = evidenceText(zetaris?.failing_step, 200);
+  const rows = Array.isArray(result.data) ? result.data : [];
+  const relevantRows = isLive
+    ? rows.filter((row) => row && typeof row === 'object' && evidenceText(row.failing_step, 200) === expectedStep).slice(0, 3)
+    : [];
+
+  if (relevantRows.length) {
+    const list = document.createElement('ol');
+    list.className = 'zetaris-evidence-list';
+    relevantRows.forEach((row) => {
+      const item = document.createElement('li');
+      const signature = document.createElement('strong');
+      signature.textContent = evidenceText(row.failure_signature, 240) || 'Recorded CI signature';
+      const recommendation = document.createElement('p');
+      recommendation.textContent = evidenceText(row.latest_recommendation, 360) || 'No recommendation recorded.';
+      const provenanceLine = document.createElement('small');
+      const occurrences = evidenceText(row.occurrences, 24);
+      const rowSource = evidenceText(row.source, 120);
+      provenanceLine.textContent = `${occurrences ? `${occurrences} prior occurrence${occurrences === '1' ? '' : 's'} · ` : ''}${rowSource || provenanceLabel}`;
+      item.append(signature, recommendation, provenanceLine);
+      list.appendChild(item);
+    });
+    detailsEl.appendChild(list);
+  } else if (isLive && rowCount) {
+    const note = document.createElement('small');
+    note.className = 'zetaris-evidence-note';
+    note.textContent = 'Matching rows were returned, but none matched the diagnosed failing step closely enough to display as corroboration.';
+    detailsEl.appendChild(note);
+  }
+
+  if (result.request_id) {
+    const request = document.createElement('small');
+    request.className = 'zetaris-evidence-note';
+    request.textContent = `Request ID: ${evidenceText(result.request_id, 96)}`;
+    detailsEl.appendChild(request);
+  }
+
+  if (result.sql) {
+    const sqlDetails = document.createElement('details');
+    sqlDetails.className = 'zetaris-sql';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Read-only SQL used for this evidence';
+    const sql = document.createElement('code');
+    sql.textContent = evidenceText(result.sql, 1200);
+    sqlDetails.append(summary, sql);
+    detailsEl.appendChild(sqlDetails);
+  }
+}
+
 function renderResult(data) {
   const resultPanel = document.getElementById('result');
   resultPanel.hidden = false;
@@ -64,14 +161,7 @@ function renderResult(data) {
     memoryEl.textContent = `H-MEM ${memory.mode || 'setup'}: ${memory.reason || 'run the documented setup to enable durable recall.'}`;
   }
 
-  const zetaris = data.zetaris || {};
-  const zetarisResult = zetaris.result || {};
-  const evidenceEl = document.getElementById('zetarisEvidence');
-  const rowCount = zetarisResult.row_count;
-  const label = zetaris.mode === 'live' ? 'live read-only evidence' : 'recorded fixture evidence';
-  evidenceEl.textContent = zetaris.mode
-    ? `Zetaris ${label}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${zetarisResult.fixture ? ` · ${zetarisResult.fixture}` : ''}.`
-    : 'Zetaris evidence was not requested for this result.';
+  renderZetarisEvidence(data.zetaris || {});
 
   const activity = data.activity || {};
   const activityEl = document.getElementById('activityTrace');
