@@ -8,6 +8,8 @@ This is the Open Agent Hackathon 2026 Wildcard [Tinkerer] build. It keeps the us
 ![MIT](https://img.shields.io/badge/license-MIT-0071E3)
 ![Gemma 4](https://img.shields.io/badge/model-Gemma%204-0071E3)
 
+> **Open Agent Hackathon:** submitted 28 Oct 2026 4:30 AM IST ([submission hub](https://hackathon.genai.works/submissions?hackathon_id=019fd164-82b9-7382-a536-d9093c576ed2)). See [docs/OPEN-AGENT-SUBMISSION.md](docs/OPEN-AGENT-SUBMISSION.md).
+
 ## Why
 
 A red GitHub Actions run normally starts with a developer scrolling through thousands of lines of output. The first error is often familiar, but it is easy to miss, and the last time the team fixed the same kind of failure is usually harder to find than it should be.
