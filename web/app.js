@@ -3,6 +3,27 @@
  * Open Agent Hackathon 2026 Wildcard [Tinkerer]
  */
 
+function evidenceText(value, limit = 360) {
+  let raw;
+  if (typeof value === 'string') {
+    raw = value;
+  } else if (value == null) {
+    raw = '';
+  } else {
+    try {
+      raw = JSON.stringify(value);
+    } catch (_) {
+      raw = String(value);
+    }
+  }
+  // The API is designed not to return credentials, but never put token-like
+  // text into the demo UI if a backend or upstream payload changes.
+  const secretLike = /(?:\b(?:authorization\s*[:=]\s*)?bearer\s+\S+|\b(?:api[_-]?key|password|token)\s*[:=]\s*\S+|["']?(?:authorization|api[_-]?key|password|token|secret|access[_-]?token|refresh[_-]?token|private[_-]?key|client[_-]?secret|credential(?:s)?)["']?\s*[:=]\s*(?:["'][^"']*["']|[^\s,;}\]]+)|\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b|\b(?:gh[pousr]_[A-Za-z0-9_-]{8,}|github_pat_[A-Za-z0-9_]{8,})\b)/i;
+  if (secretLike.test(raw)) return '[redacted]';
+  return raw.length > limit ? `${raw.slice(0, limit - 1)}…` : raw;
+}
+
+
 function formatMemoryRecall(memory = {}) {
   const recall = Array.isArray(memory.recall) ? memory.recall : [];
   if (memory.engine_source) {
@@ -17,19 +38,122 @@ function formatMemoryRecall(memory = {}) {
 function formatZetarisEvidence(zetaris = {}) {
   if (!zetaris.mode) return 'Zetaris evidence was not requested for this result.';
   const result = zetaris.result || {};
-  const rowCount = result.row_count;
-  const label = zetaris.mode === 'live'
-    ? 'live read-only evidence'
-    : zetaris.mode === 'fixture'
-      ? 'recorded fixture evidence'
-      : `${zetaris.mode} evidence`;
-  return `Zetaris ${label}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${result.fixture ? ` · ${result.fixture}` : ''}.`;
+  const rowCount = Number.isInteger(result.row_count) && result.row_count >= 0 ? result.row_count : undefined;
+  const source = evidenceText(zetaris.source, 80);
+  const provenance = evidenceText(zetaris.provenance, 80);
+  const isLive = zetaris.mode === 'live';
+  const isFixture = zetaris.mode === 'fixture';
+  const sourceLabel = isLive
+    ? source === 'zetaris-local-session'
+      ? 'live local read-only query'
+      : 'live read-only query'
+    : isFixture
+      ? 'recorded reference fixture'
+      : zetaris.mode === 'unavailable'
+        ? 'unavailable'
+        : `status: ${evidenceText(zetaris.mode, 80)}`;
+  const provenanceLabel = isFixture
+    ? 'synthetic reference data'
+    : isLive
+      ? provenance === 'synthetic-local-demo'
+        ? 'synthetic local demo rows'
+        : provenance
+          ? `${provenance} provenance`
+          : 'provenance not classified'
+      : 'no evidence returned';
+  return `Zetaris ${sourceLabel} · ${provenanceLabel}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${result.fixture ? ` · ${evidenceText(result.fixture, 120)}` : ''}.`;
 }
 
 function formatActivityTrace(activity = {}) {
   return activity.id
     ? `${activity.id} · ${activity.path || 'demo/activity/trace.jsonl'}`
     : 'Activity logging is unavailable for this request.';
+}
+
+function renderZetarisEvidence(zetaris) {
+  const evidenceEl = document.getElementById('zetarisEvidence');
+  const detailsEl = document.getElementById('zetarisEvidenceDetails');
+  detailsEl.replaceChildren();
+
+  const result = zetaris?.result || {};
+  const rowCount = Number.isInteger(result.row_count) && result.row_count >= 0 ? result.row_count : undefined;
+  const mode = zetaris?.mode;
+  const source = evidenceText(zetaris?.source, 80);
+  const provenance = evidenceText(zetaris?.provenance, 80);
+  const isLive = mode === 'live';
+  const isFixture = mode === 'fixture';
+  const sourceLabel = isLive
+    ? source === 'zetaris-local-session'
+      ? 'live local read-only query'
+      : 'live read-only query'
+    : isFixture
+      ? 'recorded reference fixture'
+      : mode === 'unavailable'
+        ? 'unavailable'
+        : `status: ${evidenceText(mode, 80)}`;
+  const provenanceLabel = isFixture
+    ? 'synthetic reference data'
+    : isLive
+      ? provenance === 'synthetic-local-demo'
+        ? 'synthetic local demo rows'
+        : provenance
+          ? `${provenance} provenance`
+          : 'provenance not classified'
+      : 'no evidence returned';
+
+  evidenceEl.textContent = mode
+    ? `Zetaris ${sourceLabel} · ${provenanceLabel}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${result.fixture ? ` · ${evidenceText(result.fixture, 120)}` : ''}.`
+    : 'Zetaris evidence was not requested for this result.';
+
+  if (!mode) return;
+
+  const expectedStep = evidenceText(zetaris?.failing_step, 200);
+  const rows = Array.isArray(result.data) ? result.data : [];
+  const relevantRows = isLive
+    ? rows.filter((row) => row && typeof row === 'object' && evidenceText(row.failing_step, 200) === expectedStep).slice(0, 3)
+    : [];
+
+  if (relevantRows.length) {
+    const list = document.createElement('ol');
+    list.className = 'zetaris-evidence-list';
+    relevantRows.forEach((row) => {
+      const item = document.createElement('li');
+      const signature = document.createElement('strong');
+      signature.textContent = evidenceText(row.failure_signature, 240) || 'Recorded CI signature';
+      const recommendation = document.createElement('p');
+      recommendation.textContent = evidenceText(row.latest_recommendation, 360) || 'No recommendation recorded.';
+      const provenanceLine = document.createElement('small');
+      const occurrences = evidenceText(row.occurrences, 24);
+      const rowSource = evidenceText(row.source, 120);
+      provenanceLine.textContent = `${occurrences ? `${occurrences} prior occurrence${occurrences === '1' ? '' : 's'} · ` : ''}${rowSource || provenanceLabel}`;
+      item.append(signature, recommendation, provenanceLine);
+      list.appendChild(item);
+    });
+    detailsEl.appendChild(list);
+  } else if (isLive && rowCount) {
+    const note = document.createElement('small');
+    note.className = 'zetaris-evidence-note';
+    note.textContent = 'Matching rows were returned, but none matched the diagnosed failing step closely enough to display as corroboration.';
+    detailsEl.appendChild(note);
+  }
+
+  if (result.request_id) {
+    const request = document.createElement('small');
+    request.className = 'zetaris-evidence-note';
+    request.textContent = `Request ID: ${evidenceText(result.request_id, 96)}`;
+    detailsEl.appendChild(request);
+  }
+
+  if (result.sql) {
+    const sqlDetails = document.createElement('details');
+    sqlDetails.className = 'zetaris-sql';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Read-only SQL used for this evidence';
+    const sql = document.createElement('code');
+    sql.textContent = evidenceText(result.sql, 1200);
+    sqlDetails.append(summary, sql);
+    detailsEl.appendChild(sqlDetails);
+  }
 }
 
 function renderResult(data) {
@@ -82,7 +206,7 @@ function renderResult(data) {
   validation.className = `validation-copy validation-${validationStatus}`;
 
   document.getElementById('memoryRecall').textContent = formatMemoryRecall(data.memory || {});
-  document.getElementById('zetarisEvidence').textContent = formatZetarisEvidence(data.zetaris || {});
+  renderZetarisEvidence(data.zetaris || {});
   document.getElementById('activityTrace').textContent = formatActivityTrace(data.activity || {});
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -177,7 +301,7 @@ async function boot() {
         if (fileStatus) fileStatus.textContent = '';
         showImage(null);
         clearResults();
-        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage failure” to diagnose it.`);
+        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage CI failure” to diagnose it.`);
       };
       fixturesEl.appendChild(btn);
     }
@@ -414,7 +538,7 @@ async function boot() {
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);
-      if (auto) setStatus('The screenshot fixture loaded, but comparison failed. You can retry with Compare diagnosis paths.');
+      if (auto) setStatus('The screenshot fixture loaded, but comparison failed. You can retry with Compare Rules vs Gemma.');
       else alert('Compare failed.');
     } finally {
       compareBtn.disabled = false;

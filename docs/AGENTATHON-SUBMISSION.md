@@ -1,8 +1,8 @@
 # Actions Nurse — Open Agent Hackathon 2026 submission pack
 
-> Current submission copy for the Open Agent Hackathon 2026. This is not the
-> historical MLH material and does not claim that a HackOS portal submission has
-> been made.
+> Paste-ready Wildcard / sponsor copy for the Open Agent Hackathon 2026. This is
+> not the historical MLH material. Portal timing is recorded in
+> [OPEN-AGENT-SUBMISSION.md](OPEN-AGENT-SUBMISSION.md).
 
 ## Title
 
@@ -52,8 +52,8 @@ live Zetaris tenant.
    cd meterless && npm run setup && npm run memory -- seed && cd ..
    ```
 
-   On a fresh checkout, run `cd meterless && npm install && cd ..` once before
-   the command above.
+   On a fresh checkout, run `cd meterless && npm ci && cd ..` once before the
+   command above.
 
 2. Start the white browser UI in deterministic mode:
 
@@ -61,12 +61,12 @@ live Zetaris tenant.
    NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
    ```
 
-3. Open <http://127.0.0.1:8787>, choose `npm-typecheck`, and press **Triage
+3. Open <http://127.0.0.1:8787>, choose `npm-typecheck`, and press **Triage CI
    failure**. The health pill says **Rules-only demo**; that is expected.
 
 4. In the result card, show **H-MEM recall**, **Zetaris evidence**, and
-   **Activity trace**. In the offline route Zetaris must say recorded fixture
-   evidence, not live.
+   **Activity trace**. In the offline route Zetaris must say recorded reference
+   fixture / synthetic reference data, not live.
 
 5. Verify the full reproducible path:
 

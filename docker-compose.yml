@@ -2,9 +2,12 @@ services:
   nurse:
     build: .
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       NURSE_RULES_ONLY: ${NURSE_RULES_ONLY:-false}
+      ZETARIS_REST_URL: ${ZETARIS_REST_URL:-}
+      ZETARIS_ORG_ID: ${ZETARIS_ORG_ID:-}
+      ZETARIS_API_KEY: ${ZETARIS_API_KEY:-}
     volumes:
       - ./fixtures:/app/fixtures:ro

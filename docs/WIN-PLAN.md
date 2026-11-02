@@ -26,14 +26,14 @@ The former public quick tunnel was **ephemeral and Rules-only** and is now retir
 
 - Latest pre-documentation [CI run](https://github.com/mangeshraut712/actions-nurse/actions/runs/40189125542) passed on source commit `5e9236c`; it includes compile/syntax checks, seven validator tests, all five Action CLI fixtures, Docker Compose build, container health, screenshot route, and HTTP smoke.
 - The local Docker client on the documentation workstation does not provide `docker compose`; no local image build is claimed. The remote CI build is the Docker proof.
-- A previous local Gemma-enabled multimodal pass used the bundled screenshot and checkout-auth fixture and returned a category-confirmed result. The current public tunnel remains Rules-only; see [the verification record](CROSSCHECK.md) for timestamps and this pass’s checks.
+- A previous local Gemma-enabled multimodal pass used the bundled screenshot and checkout-auth fixture and returned a category-confirmed result. The former public tunnel was Rules-only and is now retired; see [the verification record](CROSSCHECK.md) for timestamps and this pass’s checks.
 - The category validator checks the reported failure step against known deterministic signatures. It does not establish that all model prose is correct.
 
 ## Submission materials
 
 - [README and quickstart](../README.md)
 - [Paste-ready entries for both prize categories](MLH-SUBMISSION.md)
-- [Timed 2:30 demo script](demo-script.md)
-- [Current verification record](CROSSCHECK.md)
+- [Current 90-second demo script](demo-script.md)
+- [Historical verification record](CROSSCHECK.md)
 
 No additional feature is needed to explain the current entry. Keep the presentation focused on the multimodal comparison, its narrow validation claim, and the reusable open-source Action.

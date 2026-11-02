@@ -5,10 +5,11 @@
   "description": "Real Meterless H-MEM bridge for Actions Nurse triage history.",
   "type": "module",
   "scripts": {
-    "setup": "npx --yes degit meterless/meterless/engines/hmem/reference vendor/hmem && cd vendor/hmem && npm install --no-audit --no-fund",
+    "setup": "npx --yes degit@3.10.1 meterless/meterless/engines/hmem/reference#1742dec56a66e58eef9dda2d2b865823758ca8cd vendor/hmem && cd vendor/hmem && npm ci --no-audit --no-fund",
     "memory": "tsx nurse-memory.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.0"
   }
 }
+

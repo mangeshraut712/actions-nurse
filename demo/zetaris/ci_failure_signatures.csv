@@ -1,0 +1,5 @@
+failure_signature,failing_step,occurrences,latest_recommendation,source,observed_at
+"TS2305 missing export after merge","Typecheck / tsc",3,"Align named exports and imports, then rerun npm run typecheck.","synthetic local Actions Nurse demo corpus",2026-10-27T00:00:00Z
+"pytest assertion mismatch in dependency scoring","Unit tests / pytest",2,"Recompute the expected fixture value before changing production logic.","synthetic local Actions Nurse demo corpus",2026-10-27T00:01:00Z
+"ENOSPC while writing build cache","Runner filesystem",2,"Prune oversized cache and artifact output before rerunning the job.","synthetic local Actions Nurse demo corpus",2026-10-27T00:02:00Z
+"could not read Username during checkout","Checkout / repository access",2,"Use a repository-scoped read-only credential for the needed dependency.","synthetic local Actions Nurse demo corpus",2026-10-27T00:03:00Z
