@@ -3,6 +3,35 @@
  * Open Agent Hackathon 2026 Wildcard [Tinkerer]
  */
 
+function formatMemoryRecall(memory = {}) {
+  const recall = Array.isArray(memory.recall) ? memory.recall : [];
+  if (memory.engine_source) {
+    const memoryNames = recall.map((item) => item.content).filter(Boolean).slice(0, 2);
+    return memoryNames.length
+      ? `${memory.recall_service || 'H-MEM recall'} from ${memory.engine_source}: ${memoryNames.join(' · ')}`
+      : `${memory.mode || 'H-MEM'} is ready via ${memory.engine_source}; no similar recall cleared the threshold.`;
+  }
+  return `H-MEM ${memory.mode || 'setup'}: ${memory.reason || 'run the documented setup to enable durable recall.'}`;
+}
+
+function formatZetarisEvidence(zetaris = {}) {
+  if (!zetaris.mode) return 'Zetaris evidence was not requested for this result.';
+  const result = zetaris.result || {};
+  const rowCount = result.row_count;
+  const label = zetaris.mode === 'live'
+    ? 'live read-only evidence'
+    : zetaris.mode === 'fixture'
+      ? 'recorded fixture evidence'
+      : `${zetaris.mode} evidence`;
+  return `Zetaris ${label}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${result.fixture ? ` · ${result.fixture}` : ''}.`;
+}
+
+function formatActivityTrace(activity = {}) {
+  return activity.id
+    ? `${activity.id} · ${activity.path || 'demo/activity/trace.jsonl'}`
+    : 'Activity logging is unavailable for this request.';
+}
+
 function renderResult(data) {
   const resultPanel = document.getElementById('result');
   resultPanel.hidden = false;
@@ -52,32 +81,9 @@ function renderResult(data) {
     : validationStatus);
   validation.className = `validation-copy validation-${validationStatus}`;
 
-  const memory = data.memory || {};
-  const recall = Array.isArray(memory.recall) ? memory.recall : [];
-  const memoryEl = document.getElementById('memoryRecall');
-  if (memory.engine_source) {
-    const memoryNames = recall.map((item) => item.content).filter(Boolean).slice(0, 2);
-    memoryEl.textContent = memoryNames.length
-      ? `${memory.recall_service || 'H-MEM recall'} from ${memory.engine_source}: ${memoryNames.join(' · ')}`
-      : `${memory.mode || 'H-MEM'} is ready via ${memory.engine_source}; no similar recall cleared the threshold.`;
-  } else {
-    memoryEl.textContent = `H-MEM ${memory.mode || 'setup'}: ${memory.reason || 'run the documented setup to enable durable recall.'}`;
-  }
-
-  const zetaris = data.zetaris || {};
-  const zetarisResult = zetaris.result || {};
-  const evidenceEl = document.getElementById('zetarisEvidence');
-  const rowCount = zetarisResult.row_count;
-  const label = zetaris.mode === 'live' ? 'live read-only evidence' : 'recorded fixture evidence';
-  evidenceEl.textContent = zetaris.mode
-    ? `Zetaris ${label}${rowCount !== undefined ? ` · ${rowCount} matching row${rowCount === 1 ? '' : 's'}` : ''}${zetarisResult.fixture ? ` · ${zetarisResult.fixture}` : ''}.`
-    : 'Zetaris evidence was not requested for this result.';
-
-  const activity = data.activity || {};
-  const activityEl = document.getElementById('activityTrace');
-  activityEl.textContent = activity.id
-    ? `${activity.id} · ${activity.path || 'demo/activity/trace.jsonl'}`
-    : 'Activity logging is unavailable for this request.';
+  document.getElementById('memoryRecall').textContent = formatMemoryRecall(data.memory || {});
+  document.getElementById('zetarisEvidence').textContent = formatZetarisEvidence(data.zetaris || {});
+  document.getElementById('activityTrace').textContent = formatActivityTrace(data.activity || {});
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -171,7 +177,7 @@ async function boot() {
         if (fileStatus) fileStatus.textContent = '';
         showImage(null);
         clearResults();
-        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage with Gemma 4” to diagnose it.`);
+        setStatus(`Loaded ${name.replace(/\.txt$/, '')}. Press “Triage failure” to diagnose it.`);
       };
       fixturesEl.appendChild(btn);
     }
@@ -188,7 +194,7 @@ async function boot() {
       fileStatus.textContent = file ? `Attached: ${file.name}` : '';
       showImage(file);
       clearResults();
-      if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage with Gemma 4.');
+      if (file) setStatus('Screenshot attached. Add a log for stronger evidence, then triage the failure.');
     });
   }
 
@@ -335,6 +341,9 @@ async function boot() {
       const panel = document.getElementById('comparePanel');
       panel.hidden = false;
       document.getElementById('result').hidden = true;
+      document.getElementById('compareMemoryRecall').textContent = formatMemoryRecall(data.memory || {});
+      document.getElementById('compareZetarisEvidence').textContent = formatZetarisEvidence(data.zetaris || {});
+      document.getElementById('compareActivityTrace').textContent = formatActivityTrace(data.activity || {});
       document.getElementById('rulesSummary').textContent = data.rules?.summary || '';
       document.getElementById('rulesStep').textContent = data.rules?.failing_step || '';
       document.getElementById('rulesCause').textContent = data.rules?.root_cause || '';
@@ -405,7 +414,7 @@ async function boot() {
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       console.error(err);
-      if (auto) setStatus('The screenshot fixture loaded, but comparison failed. You can retry with Compare Rules vs Gemma.');
+      if (auto) setStatus('The screenshot fixture loaded, but comparison failed. You can retry with Compare diagnosis paths.');
       else alert('Compare failed.');
     } finally {
       compareBtn.disabled = false;

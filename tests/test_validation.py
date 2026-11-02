@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from nurse import (
     TriageResult,
+    enriched_compare,
     final_triage,
     guard_model_credential_advice as nurse_guard_credential_advice,
     health,
@@ -23,6 +24,7 @@ from nurse import (
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKOUT_LOG = (ROOT / "fixtures" / "checkout-auth.txt").read_text(encoding="utf-8")
+TYPECHECK_LOG = (ROOT / "fixtures" / "npm-typecheck.txt").read_text(encoding="utf-8")
 CLI_SPEC = importlib.util.spec_from_file_location("actions_nurse_cli", ROOT / "action" / "nurse_cli.py")
 assert CLI_SPEC and CLI_SPEC.loader
 CLI = importlib.util.module_from_spec(CLI_SPEC)
@@ -42,6 +44,72 @@ def model_result(step: str, root_cause: str) -> TriageResult:
 
 
 class GemmaValidationTests(unittest.TestCase):
+    def test_fixture_comparison_attaches_sponsor_evidence_and_activity(self) -> None:
+        """The comparison endpoint uses the same reviewable evidence chain."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "trace.jsonl"
+            with patch("nurse.hmem_status", return_value={"ready": False, "mode": "setup_required"}), patch.dict(
+                os.environ,
+                {
+                    "NURSE_ACTIVITY_LOG": str(trace),
+                    "ZETARIS_FIXTURE_MODE": "1",
+                },
+                clear=False,
+            ):
+                result = enriched_compare(
+                    TYPECHECK_LOG,
+                    "fixture-model",
+                    use_rules=True,
+                    route="compare",
+                )
+            record = json.loads(trace.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.rules.engine, "rules")
+        self.assertIsNone(result.gemma)
+        self.assertEqual(result.zetaris["mode"], "fixture")
+        self.assertEqual(result.zetaris["result"]["fixture"], "ci-failure-signatures.json")
+        self.assertTrue(result.activity["id"].startswith("act-"))
+        self.assertEqual(record["route"], "compare")
+        self.assertNotIn(TYPECHECK_LOG, json.dumps(record))
+
+    def test_fixture_triage_attaches_zetaris_evidence_and_appends_activity(self) -> None:
+        """The offline sponsor path returns labelled evidence and preserves prior trace rows."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "trace.jsonl"
+            trace.write_text('{"event":"prior"}\n', encoding="utf-8")
+            with patch("nurse.hmem_status", return_value={"ready": False, "mode": "setup_required"}), patch.dict(
+                os.environ,
+                {
+                    "NURSE_ACTIVITY_LOG": str(trace),
+                    "ZETARIS_FIXTURE_MODE": "1",
+                },
+                clear=False,
+            ):
+                result = enriched_triage(
+                    TYPECHECK_LOG,
+                    "fixture-model",
+                    use_rules=True,
+                    route="triage",
+                )
+            records = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(result.zetaris["mode"], "fixture")
+        self.assertEqual(result.zetaris["source"], "recorded-demo-fixture")
+        self.assertEqual(result.zetaris["result"]["fixture"], "ci-failure-signatures.json")
+        self.assertEqual(result.zetaris["result"]["row_count"], 1)
+        self.assertEqual(result.evidence[0]["provider"], "Zetaris Lightning SQL")
+        self.assertEqual(result.evidence[0]["fixture"], "ci-failure-signatures.json")
+        self.assertTrue(result.activity["id"].startswith("act-"))
+        self.assertEqual(records[0], {"event": "prior"})
+        self.assertEqual(records[-1]["event"], "triage")
+        self.assertEqual(records[-1]["fixture"], "npm-typecheck.txt")
+        self.assertEqual(records[-1]["zetaris"], {
+            "fixture": "ci-failure-signatures.json",
+            "mode": "fixture",
+            "source": "recorded-demo-fixture",
+        })
+        self.assertNotIn(TYPECHECK_LOG, json.dumps(records[-1]))
+
     def test_unknown_log_text_is_not_written_to_activity_trace(self) -> None:
         raw_marker = "super-secret-value-987"
         with tempfile.TemporaryDirectory() as temp_dir:

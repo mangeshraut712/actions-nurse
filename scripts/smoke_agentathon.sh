@@ -14,7 +14,7 @@ BASE="${1:-}"
 STATE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/actions-nurse-hmem.XXXXXX")"
 SERVER_PID=""
 SERVER_LOG="$STATE_DIR/server.log"
-ACTIVITY_LOG="demo/activity/trace.jsonl"
+ACTIVITY_LOG="$STATE_DIR/activity/trace.jsonl"
 
 cleanup() {
   if [[ -n "$SERVER_PID" ]]; then
@@ -26,6 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 export NURSE_HMEM_DIR="$STATE_DIR/hmem"
+export NURSE_ACTIVITY_LOG="$ACTIVITY_LOG"
 export ZETARIS_FIXTURE_MODE=1
 
 if [[ ! -x meterless/node_modules/.bin/tsx || ! -f meterless/vendor/hmem/src/index.ts ]]; then

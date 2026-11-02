@@ -17,7 +17,7 @@ Checked 25 October 2026 at approximately 17:23 IST. The documentation refresh is
 | Local Docker Compose | **UNAVAILABLE** — `docker compose build` returned `docker: unknown command: docker compose`. No local image was built. | Command result from this workstation |
 | Screenshot asset | **PASS** — the PNG is bundled in the Docker image and was checked at `/demo-assets/red-actions-permission-failure.png` in CI. Rules-only screenshot triage and compare also passed locally. | [asset](fixtures-img/red-actions-permission-failure.png), [Dockerfile](../Dockerfile) |
 | Key-backed local runtime | **AVAILABLE** — at ~17:23 IST, `http://127.0.0.1:8788/api/health` reported `rules_only: false`, `gemma_key: true`, and a 20-second budget. Health confirms configuration only. The previous recorded live multimodal check at 17:00 IST used the bundled screenshot plus `checkout-auth.txt` and received a category-confirmed Gemma result. | [`nurse.py`](../nurse.py), [submission readiness notes](WIN-PLAN.md) |
-| Public demo | **RESPONDING, EPHEMERAL, RULES-ONLY** — at ~17:23 IST, the temporary Cloudflare URL's health endpoint reported `rules_only: true` and `gemma_key: false`. No Gemma request is made by this public runtime. | [Open temporary demo](https://mini-deleted-wed-week.trycloudflare.com) |
+| Public demo | **RESPONDING, EPHEMERAL, RULES-ONLY** — at ~17:23 IST, the now-retired temporary Cloudflare tunnel's health endpoint reported `rules_only: true` and `gemma_key: false`. No Gemma request was made by that public runtime. | Historical tunnel retired; no current public-demo link |
 
 ## What the validator proves
 

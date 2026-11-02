@@ -20,7 +20,7 @@ Updated 25 October 2026. This file tracks the evidence and presentation for the 
 3. Show the failed-run composite Action, read-only permissions, Markdown report, and artifact upload.
 4. Close with the MIT license, five fixtures, key-free Rules mode, and the green CI evidence.
 
-The [public quick tunnel](https://mini-deleted-wed-week.trycloudflare.com) is **ephemeral and Rules-only**. Its health check reports model calls disabled. It can show the interface and fallback, but it cannot serve as proof of live Gemma inference. Keep the key-backed demonstration on loopback.
+The former public quick tunnel was **ephemeral and Rules-only** and is now retired. Its health check reported model calls disabled. It could show the interface and fallback, but could not serve as proof of live Gemma inference. Keep the key-backed demonstration on loopback.
 
 ## Verified evidence and limits
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Actions Nurse · Agentathon 2026</title>
-  <link rel="stylesheet" href="/static/styles.css?v=apple1" />
+  <link rel="stylesheet" href="/static/styles.css?v=apple3" />
 </head>
 <body>
   <header>
@@ -34,8 +34,8 @@
       <label for="log">Failed CI log</label>
       <textarea id="log" rows="14" placeholder="Paste a failed GitHub Actions log…"></textarea>
       <div class="row actions">
-        <button id="triage" class="primary">Triage with Gemma 4</button>
-        <button id="compare" class="secondary">Compare Rules vs Gemma</button>
+        <button id="triage" class="primary">Triage failure</button>
+        <button id="compare" class="secondary">Compare diagnosis paths</button>
         <button id="clear" class="ghost" type="button">Clear</button>
         <label class="file"><input type="file" id="image" accept="image/*" /> + CI screenshot</label>
       </div>
@@ -100,9 +100,32 @@
           </dl>
         </article>
       </div>
+      <section class="comparison-evidence" aria-labelledby="comparisonEvidenceTitle">
+        <div class="section-heading">
+          <div>
+            <h3 id="comparisonEvidenceTitle">Evidence attached to this comparison</h3>
+            <p>The same incident is recalled, checked with read-only Zetaris evidence, and appended to the safe activity trace.</p>
+          </div>
+          <span class="compare-label">H-MEM · Zetaris · activity</span>
+        </div>
+        <div class="comparison-evidence-grid">
+          <article>
+            <h4>Meterless H-MEM</h4>
+            <p id="compareMemoryRecall" class="sponsor-copy">Waiting for a comparison.</p>
+          </article>
+          <article>
+            <h4>Zetaris evidence</h4>
+            <p id="compareZetarisEvidence" class="sponsor-copy">Waiting for a comparison.</p>
+          </article>
+          <article>
+            <h4>Activity trace</h4>
+            <p id="compareActivityTrace" class="sponsor-copy">Waiting for a comparison.</p>
+          </article>
+        </div>
+      </section>
     </section>
   </main>
   <footer>Gemma 4 via Gemini API · Meterless H-MEM · Zetaris read-only Lightning SQL · deterministic Rules fallback · MIT</footer>
-  <script src="/static/app.js?v=apple6"></script>
+  <script src="/static/app.js?v=apple8"></script>
 </body>
 </html>

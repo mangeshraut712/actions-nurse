@@ -1,13 +1,19 @@
-# Judge demo · 90 seconds
+# Judge demo · 90 seconds · white UI route
 
-The reliable route is deliberately key-free: Rules-only triage, H-MEM installed locally, and Zetaris fixture mode. If live Zetaris credentials are configured, say so and show the `live` mode; otherwise call the fixture exactly what it is.
+The reliable route is deliberately key-free: Rules-only triage, H-MEM installed locally, and Zetaris fixture mode. The current browser experience is a white, Apple-style page: its health pill reports the runtime state, and every successful triage result includes **H-MEM recall**, **Zetaris evidence**, and an **Activity trace** row. If live Zetaris credentials are configured, say so and show the `live` mode; otherwise call the fixture exactly what it is.
 
 ## Before the clock starts
 
-In one terminal:
+On a fresh checkout, install the Node dependencies once:
 
 ```bash
-cd meterless && npm install && npm run setup && npm run memory -- seed && cd ..
+cd meterless && npm install && cd ..
+```
+
+Then, in one terminal:
+
+```bash
+cd meterless && npm run setup && npm run memory -- seed && cd ..
 NURSE_RULES_ONLY=true uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
@@ -17,17 +23,17 @@ In a second terminal, keep this command ready:
 NURSE_RULES_ONLY=true ./scripts/smoke_agentathon.sh
 ```
 
-Open <http://127.0.0.1:8787> or show the terminal output. Do not claim a Gemini or Zetaris cloud call unless the response mode says it actually happened.
+Open <http://127.0.0.1:8787>. The smoke command is a reliable backup, but the primary route below is the browser UI. Do not claim a Gemini or Zetaris cloud call unless the response mode says it actually happened.
 
 ## 0:00–0:12 · The promise
 
-**Show:** the web app title or the smoke command header.
+**Show:** the white Actions Nurse page, its sponsor chips, and the health pill.
 
-> “Actions Nurse triages failed GitHub Actions, explains likely root cause, remembers past failures. It is a first-response tool: it explains and records; it does not execute a fix.”
+> “Actions Nurse triages failed GitHub Actions, explains the likely root cause, and remembers past failures. The health pill makes this demo state clear: it is Rules-only, so no model request is being made. It is a first-response tool: it explains and records; it does not execute a fix.”
 
 ## 0:12–0:30 · Triage an actual red fixture
 
-**Show:** `npm-typecheck.txt` in the browser fixture picker, then click triage; or show the smoke output for its HTTP triage request.
+**Show:** select `npm-typecheck` under **Reproducible red-CI fixtures**, then click **Triage failure**. In this runtime, the status copy says Rules-only and the white result card opens below the input.
 
 > “This typecheck failed because imports refer to exports that no longer exist. Rules recognizes the log signature locally, so this diagnosis is reproducible even without a model key. Gemma remains available as the optional explanatory path, with Rules checking known categories.”
 
@@ -35,26 +41,26 @@ Point to the failing step and the suggested local `npm run typecheck` check. Do 
 
 ## 0:30–0:45 · Zetaris evidence, honestly labeled
 
-**Show:** the `zetaris` field in the enriched response or `GET /api/zetaris/preflight`.
+**Show:** the **Zetaris evidence** row in that same result card. It should say **recorded fixture evidence** and name `ci-failure-signatures.json` in the offline route. Optionally show `GET /api/zetaris/preflight` for the two read-only checks.
 
-> “The Zetaris client uses read-only Lightning SQL. This machine is showing **fixture mode** [or **live mode** if returned], so the evidence source is explicit. The same call shape runs `SELECT 1`, `SHOW LIGHTNING DATABASES`, and a scoped historical CI-evidence query when credentials are present.”
+> “The Zetaris client uses read-only Lightning SQL. This machine is showing **fixture mode** [or **live mode** if returned], so the source is explicit. Fixture is a recorded local response, not a cloud claim. With configured credentials, the same contract runs `SELECT 1`, `SHOW LIGHTNING DATABASES`, and a scoped historical CI-evidence query.”
 
 ## 0:45–1:05 · Meterless H-MEM recall
 
-**Show:** the prior-failure recall in triage, then run:
+**Show:** the **H-MEM recall** row directly above Zetaris in the result card; it identifies `vendor/hmem` and any recalled incident text. Then, if useful, run:
 
 ```bash
 cd meterless
 npm run memory -- ask "TypeScript missing exports typecheck"
 ```
 
-> “The recall is backed by real Meterless H-MEM. The startup line identifies `vendor/hmem`, and the answer carries memory IDs as provenance. Triage remembers this diagnosis through `MemoryMiningService`; recall uses `MemoryRetrievalService`; its history is available from the append-only `TrustLedgerService`.”
+> “The recall is backed by real Meterless H-MEM. The engine source is `vendor/hmem`, and the answer carries memory IDs as provenance. Triage recalls through `MemoryRetrievalService`, then remembers the completed diagnosis through `MemoryMiningService`; its history is available from the append-only `TrustLedgerService`.”
 
 If asked about maintenance, point to the preview-only `SleepCycleService` command instead of running a destructive operation.
 
 ## 1:05–1:20 · Trace, not hand-waving
 
-**Show:**
+**Show:** the **Activity trace** row at the bottom of the same result card. It gives an `act-…` ID and `demo/activity/trace.jsonl`. Then show:
 
 ```bash
 tail -n 1 demo/activity/trace.jsonl
@@ -64,9 +70,9 @@ tail -n 1 demo/activity/trace.jsonl
 
 ## 1:20–1:30 · Close
 
-**Show:** the smoke script’s final `SMOKE_AGENTATHON_OK` line, then the README sponsor section.
+**Show:** the smoke script’s final `SMOKE_AGENTATHON_OK` line, then the README evidence table.
 
-> “The whole fixture path is green without cloud secrets: failed log to diagnosis, evidence, memory recall, and audit trace. Zetaris supplies optional federated evidence; Meterless makes past fixes reusable; Gemma stays at the center of the explanation path.”
+> “The whole fixture path is green without cloud secrets: failed log to diagnosis, memory recall, Zetaris evidence, and an activity trace. Zetaris supplies optional read-only evidence; Meterless makes past fixes reusable; Gemma remains the optional explanatory path when a key is configured.”
 
 ## Useful backup lines
 

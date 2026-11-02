@@ -290,6 +290,21 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .badge-low { color: var(--red); }
 
 .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.comparison-evidence {
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border);
+}
+.comparison-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.comparison-evidence-grid h4 {
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  font-size: 0.86rem;
+}
 
 .compare-hero {
   display: grid;
@@ -428,7 +443,7 @@ footer {
 }
 
 @media (max-width: 800px) {
-  .compare-grid, .compare-hero { grid-template-columns: 1fr; }
+  .compare-grid, .compare-hero, .comparison-evidence-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   header { display: block; }

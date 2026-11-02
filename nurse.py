@@ -413,17 +413,7 @@ def enriched_triage(
     # This is deliberately before the Gemma branch: previous, corroborating
     # incidents are available in the response even when the model is skipped.
     memory_state, recall = _recall_before_diagnosis(baseline)
-    has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
-    candidate: Optional[TriageResult]
-    if use_rules:
-        candidate = None
-        gemma_state = "skipped_rules_only"
-    elif not has_key:
-        candidate = None
-        gemma_state = "skipped_no_key"
-    else:
-        candidate = gemma_triage(log, model, image)
-        gemma_state = "attempted_success" if candidate else "attempted_no_result"
+    candidate, gemma_state = _model_candidate(log, model, use_rules=use_rules, image=image)
     result = final_triage(candidate, baseline)
     if unavailable_summary and candidate is None:
         result.summary = unavailable_summary
@@ -621,6 +611,27 @@ def gemma_triage(log: str, model: str, image: Optional[tuple[str, bytes]] = None
     return None
 
 
+def _model_candidate(
+    log: str,
+    model: str,
+    *,
+    use_rules: bool,
+    image: Optional[tuple[str, bytes]] = None,
+) -> tuple[Optional[TriageResult], str]:
+    """Return a model proposal and its explicit availability state.
+
+    Both the single-result and comparison routes use this decision so a
+    rules-only or key-free demo is described consistently in the UI and
+    activity trace.
+    """
+    if use_rules:
+        return None, "skipped_rules_only"
+    if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
+        return None, "skipped_no_key"
+    candidate = gemma_triage(log, model, image)
+    return candidate, "attempted_success" if candidate else "attempted_no_result"
+
+
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(ROOT / "web" / "index.html")
@@ -798,17 +809,77 @@ async def triage_image(
 
 
 class CompareResult(BaseModel):
+    """Side-by-side diagnoses plus the evidence collected for that incident."""
+
     rules: TriageResult
     gemma: Optional[TriageResult] = None
+    # A comparison is a real triage route, not a display-only model probe.
+    # Keep sponsor provenance alongside the two candidate views so the one-click
+    # screenshot demo follows the same H-MEM → Zetaris → activity path.
+    memory: dict[str, Any] = Field(default_factory=dict)
+    zetaris: dict[str, Any] = Field(default_factory=dict)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    activity: dict[str, Any] = Field(default_factory=dict)
+
+
+def enriched_compare(
+    log: str,
+    model: str,
+    *,
+    use_rules: bool,
+    route: str,
+    image: Optional[tuple[str, bytes]] = None,
+) -> CompareResult:
+    """Compare diagnosis proposals while preserving the complete triage path.
+
+    The comparison panel is used by the bundled screenshot demo. It therefore
+    performs the same pre-diagnosis H-MEM recall, post-diagnosis H-MEM mining,
+    read-only Zetaris lookup, and sanitised activity append as a normal triage.
+    """
+    baseline = rule_triage(log)
+    memory_state, recall = _recall_before_diagnosis(baseline)
+    candidate, gemma_state = _model_candidate(log, model, use_rules=use_rules, image=image)
+
+    # The comparison keeps the model proposal visible even when Rules would
+    # override it for the single-result route. Use copies so the activity's
+    # final result cannot mutate either side-by-side card.
+    gemma = (
+        validate_gemma_result(candidate.model_copy(deep=True), baseline.model_copy(deep=True))
+        if candidate
+        else None
+    )
+    final = final_triage(
+        candidate.model_copy(deep=True) if candidate else None,
+        baseline.model_copy(deep=True),
+    )
+    enriched = _sponsor_enrichment(
+        final,
+        baseline,
+        log,
+        gemma_state=gemma_state,
+        route=route,
+        memory_state=memory_state,
+        recall=recall,
+    )
+    return CompareResult(
+        rules=baseline,
+        gemma=gemma,
+        memory=enriched.memory,
+        zetaris=enriched.zetaris,
+        evidence=enriched.evidence,
+        activity=enriched.activity,
+    )
 
 
 @app.post("/api/compare", response_model=CompareResult)
 def compare(req: TriageRequest) -> CompareResult:
-    """Side-by-side rules vs Gemma — great for show-and-tell."""
-    rules = rule_triage(req.log)
-    candidate = None if (RULES_ONLY or req.rules_only) else gemma_triage(req.log, req.model)
-    gemma = validate_gemma_result(candidate, rules.model_copy(deep=True)) if candidate else None
-    return CompareResult(rules=rules, gemma=gemma)
+    """Side-by-side Rules/Gemma view with sponsor evidence for one incident."""
+    return enriched_compare(
+        req.log,
+        req.model,
+        use_rules=RULES_ONLY or req.rules_only,
+        route="compare",
+    )
 
 
 @app.post("/api/compare-image", response_model=CompareResult)
@@ -825,10 +896,13 @@ async def compare_image(
     if not raw:
         raise HTTPException(status_code=422, detail="image is empty")
     evidence = log or "Screenshot supplied; no text log was pasted."
-    rules = rule_triage(evidence)
-    candidate = None if (RULES_ONLY or rules_only) else gemma_triage(evidence, model, (image.content_type or "image/png", raw))
-    gemma = validate_gemma_result(candidate, rules.model_copy(deep=True)) if candidate else None
-    return CompareResult(rules=rules, gemma=gemma)
+    return enriched_compare(
+        evidence,
+        model,
+        use_rules=RULES_ONLY or rules_only,
+        route="compare_image",
+        image=(image.content_type or "image/png", raw),
+    )
 
 
 if __name__ == "__main__":

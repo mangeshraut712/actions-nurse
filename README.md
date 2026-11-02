@@ -8,6 +8,28 @@ This is the Open Agent Hackathon 2026 Wildcard [Tinkerer] build. It keeps the us
 ![MIT](https://img.shields.io/badge/license-MIT-0071E3)
 ![Gemma 4](https://img.shields.io/badge/model-Gemma%204-0071E3)
 
+> [!IMPORTANT]
+> **Privacy boundary.** Treat a failed CI log and screenshot as untrusted and
+> potentially sensitive. Actions Nurse records only a fingerprint and safe
+> execution metadata in its activity trace—not raw logs, prompts, API keys, or
+> authorization headers. Do not paste secrets or private incident data into a
+> hosted-model run unless that is appropriate for your environment.
+
+## Hackathon prize / track evidence
+
+The table is deliberately a map to reproducible repository evidence, not a
+claim that an optional cloud service was contacted during an offline demo.
+
+| Prize / track | What a judge can verify | Evidence in this repository |
+|---|---|---|
+| **Wildcard [Tinkerer]** | A failed GitHub Actions log becomes a reviewable diagnosis, then an enriched result with prior-memory recall, read-only evidence, and an activity ID. Rules-only mode remains usable without a Gemini key. | [Triage and sponsor orchestration](nurse.py), [white result panel](web/index.html), [offline smoke path](scripts/smoke_agentathon.sh), [90-second route](docs/demo-script.md) |
+| **Meterless H-MEM** | The app recalls prior incidents before the optional model branch, remembers the completed diagnosis through named H-MEM services, and exposes Trust Ledger history. The smoke path asserts the installed engine source is `vendor/hmem`. | [H-MEM bridge](meterless/nurse-memory.ts), [install command](meterless/package.json), [service notes](docs/meterless.md), [smoke assertions](scripts/smoke_agentathon.sh) |
+| **Zetaris** | Triage attaches read-only Lightning SQL evidence. The contract is explicit: a configured tenant can return `live`; the reproducible path returns a labeled `fixture`, never a simulated live result. | [read-only client](integrations/zetaris/client.py), [recorded fixtures](integrations/zetaris/fixtures), [integration guide](docs/zetaris.md), [fixture-mode smoke assertions](scripts/smoke_agentathon.sh) |
+
+The paste-ready [Agentathon submission pack](docs/AGENTATHON-SUBMISSION.md)
+uses the same evidence and does not claim a portal submission or live Zetaris
+access where neither occurred.
+
 ## Why
 
 A red GitHub Actions run normally starts with a developer scrolling through thousands of lines of output. The first error is often familiar, but it is easy to miss, and the last time the team fixed the same kind of failure is usually harder to find than it should be.
@@ -27,21 +49,22 @@ The supported fixture set covers checkout authentication, disk full, TypeScript 
 
 ## Architecture at a glance
 
-```text
-failed Actions log / screenshot
-          |
-          +--> Rules baseline ----+--> final, reviewable diagnosis
-          |                       |
-          +--> optional Gemma ----+    (Rules checks known categories)
-          |
-          +--> H-MEM recall ------+--> related prior incidents + provenance
-          |
-          +--> Zetaris SQL -------+--> live read-only evidence or fixtures
-                                      |
-                                      +--> append-only activity trace
+```mermaid
+flowchart TD
+    input[Failed Actions log / optional screenshot] --> rules[Rules baseline]
+    rules --> recall[H-MEM recall<br/>when the engine is ready]
+    recall --> gemma{Gemma enabled?}
+    gemma -->|yes| proposal[Optional Gemma proposal]
+    gemma -->|no| rulesResult[Rules result]
+    proposal --> final[Final reviewable diagnosis<br/>Rules checks known categories]
+    rulesResult --> final
+    final --> remember[H-MEM remember<br/>when the engine is ready]
+    remember --> zetaris[Zetaris read-only evidence<br/>live or labeled fixture]
+    zetaris --> activity[Append-only safe activity trace]
+    activity --> response[Enriched triage response]
 ```
 
-Rules validate a known failure category only; they do not prove every sentence in a model explanation. The application treats pasted logs and screenshots as untrusted evidence. If Gemma is enabled, it receives at most 12,000 log characters and an optional image up to 5 MiB. Do not send secrets or private incident data to a hosted model unless that is appropriate for your environment.
+Rules validate a known failure category only; they do not prove every sentence in a model explanation. If Gemma is enabled, it receives at most 12,000 log characters and an optional image up to 5 MiB. Sponsor availability states are returned as evidence, never promoted into a root cause.
 
 ## How to run
 
@@ -167,6 +190,7 @@ demo/activity/           append-only execution traces
 demo/io/                 recorded fixture input/output for the demo
 docs/zetaris.md          Zetaris credential and fixture-mode guide
 docs/demo-script.md      90-second judge route
+docs/AGENTATHON-SUBMISSION.md  Current submission copy and evidence map
 ```
 
 MIT licensed. Built for the Open Agent Hackathon 2026 Wildcard [Tinkerer] track.
