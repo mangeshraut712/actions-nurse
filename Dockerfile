@@ -23,6 +23,10 @@ COPY docs/fixtures-img/red-actions-permission-failure.png ./docs/fixtures-img/
 COPY web ./web
 # Optional demo trace path (created empty so health/activity status is stable)
 RUN mkdir -p demo/activity
+# Run as an unprivileged user to satisfy container security hardening requirements
+RUN groupadd --system appgroup && useradd --system --gid appgroup --no-create-home appuser \
+    && chown -R appuser:appgroup /app
+USER appuser
 ENV PORT=8787
 EXPOSE 8787
 CMD ["uvicorn", "nurse:app", "--host", "0.0.0.0", "--port", "8787"]
