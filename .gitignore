@@ -8,3 +8,6 @@ node_modules/
 vendor/
 .notebook/
 meterless/.nurse-memory/
+.pytest_cache/
+.artifacts/
+.codex-prompts/
