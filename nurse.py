@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -797,7 +798,10 @@ async def triage_image(
         if use_rules
         else f"Gemma was unavailable within {GEMMA_BUDGET_SECONDS} seconds; rules triage used the pasted log."
     )
-    return enriched_triage(
+    # Upload reads are async, but model and sponsor calls are synchronous.
+    # Match FastAPI's worker-thread execution of the text-only route.
+    return await run_in_threadpool(
+        enriched_triage,
         evidence,
         model,
         use_rules=use_rules,
@@ -896,7 +900,8 @@ async def compare_image(
     if not raw:
         raise HTTPException(status_code=422, detail="image is empty")
     evidence = log or "Screenshot supplied; no text log was pasted."
-    return enriched_compare(
+    return await run_in_threadpool(
+        enriched_compare,
         evidence,
         model,
         use_rules=RULES_ONLY or rules_only,
