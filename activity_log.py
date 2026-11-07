@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -56,16 +57,25 @@ def append_activity(event: str, **fields: Any) -> dict[str, Any]:
 
 
 def latest_activity(limit: int = 20) -> list[dict[str, Any]]:
-    """Return recent records without failing a health or demo endpoint."""
+    """Return recent valid records, tolerating an interrupted or damaged row."""
     safe_limit = max(1, min(int(limit), 100))
     path = _trace_path()
-    if not path.is_file():
-        return []
+    records: deque[dict[str, Any]] = deque(maxlen=safe_limit)
     try:
-        rows = path.read_text(encoding="utf-8").splitlines()[-safe_limit:]
-        return [json.loads(row) for row in rows if row.strip()]
-    except (OSError, json.JSONDecodeError):
+        # Decode each row separately so an incomplete UTF-8 sequence or JSON
+        # append cannot hide earlier events. Retain only the requested history
+        # and leave the append-only evidence file unchanged.
+        with path.open("rb") as stream:
+            for row in stream:
+                try:
+                    record = json.loads(row.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+                if isinstance(record, dict):
+                    records.append(record)
+    except OSError:
         return []
+    return list(records)
 
 
 def activity_status() -> dict[str, Any]:
