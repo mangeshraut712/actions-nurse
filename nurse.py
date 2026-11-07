@@ -95,7 +95,7 @@ class MemoryRememberRequest(BaseModel):
 
 RULES: list[tuple[str, dict[str, str]]] = [
     (
-        r"TS2305|has no exported member|tsc --noEmit|error TS\d+",
+        r"TS2305|has no exported member|error TS\d+",
         {
             "failing_step": "Typecheck / tsc",
             "root_cause": "TypeScript compile errors — missing exports or stale types after a merge.",
@@ -106,7 +106,7 @@ RULES: list[tuple[str, dict[str, str]]] = [
         },
     ),
     (
-        r"AssertionError|FAILED tests/|pytest|short test summary",
+        r"AssertionError|FAILED tests/",
         {
             "failing_step": "Unit tests / pytest",
             "root_cause": "A unit test assertion no longer matches the computed result.",
