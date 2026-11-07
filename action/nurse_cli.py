@@ -13,7 +13,7 @@ import urllib.request
 from pathlib import Path
 
 RULES = [
-    (r"TS2305|has no exported member|tsc --noEmit|error TS\d+", {
+    (r"TS2305|has no exported member|error TS\d+", {
         "summary": "CI failed on TypeScript typecheck (missing module exports).",
         "failing_step": "Typecheck / tsc",
         "root_cause": "TypeScript compile errors — missing exports or stale types after a merge.",
@@ -21,7 +21,7 @@ RULES = [
         "confidence": "high",
         "fix_commands": ["npm run typecheck", "git rebase origin/main"],
     }),
-    (r"AssertionError|FAILED tests/|pytest|short test summary", {
+    (r"AssertionError|FAILED tests/", {
         "summary": "CI failed because a pytest assertion did not match.",
         "failing_step": "Unit tests / pytest",
         "root_cause": "A unit test assertion no longer matches the computed result.",
