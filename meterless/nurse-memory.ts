@@ -19,10 +19,17 @@ import { loadHMEM } from "./engine.ts";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_STATE_DIR = path.join(here, ".nurse-memory");
 const MAX_TEXT = 1_600;
+// Keep this value grammar aligned with memory_bridge.py. Redact before slicing.
+const SECRET_VALUE = String.raw`(?:"(?:\\(?:[\s\S]|$)|[^"\\])*(?:"|$)|'(?:\\(?:[\s\S]|$)|[^'\\])*(?:'|$)|[^\s,;"'])+`;
 const SECRET_PATTERNS = [
   /\b(?:ghp|github_pat|gho|ghu|ghs)_[A-Za-z0-9_\-]+\b/g,
-  /\bBearer\s+[^\s,;]+/gi,
-  /\b(?:Bearer|token|password|api[_ -]?key)\s*[:=]\s*[^\s,;]+/gi,
+  // Match quoted keys/values before standalone Bearer text so JSON strings,
+  // embedded spaces, and escaped quotes cannot leave a credential suffix.
+  new RegExp(
+    String.raw`["']?\b(?:authorization|proxy-authorization|Bearer|token|password|api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret)["']?\s*[:=]\s*(?:(?:Bearer|Basic)\s+)?` + SECRET_VALUE,
+    "gi",
+  ),
+  new RegExp(String.raw`\bBearer\s+` + SECRET_VALUE, "gi"),
 ];
 
 type Json = Record<string, unknown>;
@@ -301,7 +308,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`H-MEM bridge error: ${message}`);
+  // JSON.parse includes source excerpts and may truncate away the credential
+  // key. No text redactor can reliably identify the remaining secret value.
+  const message = error instanceof SyntaxError
+    ? "Could not parse H-MEM data; check the local memory store."
+    : error instanceof Error ? error.message : String(error);
+  console.error(`H-MEM bridge error: ${cleanText(message, 240)}`);
   process.exit(1);
 });
