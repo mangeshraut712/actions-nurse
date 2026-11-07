@@ -22,14 +22,26 @@ VENDORED_ENGINE = METERLESS_DIR / "vendor" / "hmem" / "src" / "index.ts"
 LOCAL_TSX = METERLESS_DIR / "node_modules" / ".bin" / "tsx"
 MAX_ERROR_CHARS = 240
 
+# Keep this value grammar aligned with meterless/nurse-memory.ts. Quoted
+# credentials can contain whitespace, escaped characters, or a truncated end.
+_SECRET_VALUE = (
+    r"(?:\"(?:\\(?:[\s\S]|$)|[^\"\\])*(?:\"|$)|"
+    r"'(?:\\(?:[\s\S]|$)|[^'\\])*(?:'|$)|[^\s,;\"'])+"
+)
 _TOKEN_PATTERN = re.compile(
-    r"\b(?:ghp|github_pat|gho|ghu|ghs)_[A-Za-z0-9_\-]+\b|\b(?:Bearer|token|password|api[_ -]?key)\s*[:=]\s*[^\s,;]+",
+    r"\b(?:ghp|github_pat|gho|ghu|ghs)_[A-Za-z0-9_\-]+\b"
+    r"|[\"']?\b(?:authorization|proxy-authorization|Bearer|token|password|api[_ -]?key|"
+    r"access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret)[\"']?\s*[:=]\s*"
+    r"(?:(?:Bearer|Basic)\s+)?" + _SECRET_VALUE
+    + r"|\bBearer\s+" + _SECRET_VALUE,
     re.IGNORECASE,
 )
 
 
 def _redact(value: Any, limit: int = 1_600) -> str:
     """Keep bridge payloads bounded and avoid persisting obvious secret forms."""
+    # Redact complete quoted values (including spaces and escaped quotes)
+    # before truncation can strip the syntax that identifies the credential.
     return _TOKEN_PATTERN.sub("[redacted]", str(value or "")).strip()[:limit]
 
 
