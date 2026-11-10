@@ -30,9 +30,12 @@ _SECRET_VALUE = (
 )
 _TOKEN_PATTERN = re.compile(
     r"\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b"
+    r"|\bAKIA[0-9A-Z]{16}\b"
+    r"|\b(?:npm_|hf_|glpat-|sk-)[A-Za-z0-9_\-]+"
     r"|[\"']?\b(?:authorization|proxy-authorization|Bearer|token|password|api[_ -]?key|"
     r"access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret)[\"']?\s*[:=]\s*"
     r"(?:(?:Bearer|Basic)\s+)?" + _SECRET_VALUE
+    + r"|[\"']?[\w-]*(?:access_key_id|secret_access_key)[\"']?\s*[:=]\s*" + _SECRET_VALUE
     + r"|\bBearer\s+" + _SECRET_VALUE,
     re.IGNORECASE,
 )
