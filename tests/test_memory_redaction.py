@@ -61,6 +61,8 @@ CASES = (
     ('rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY', 'rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY'),
     ('xoxs-SYNTHETIC_SLACK_SESSION_CANARY', 'xoxs-SYNTHETIC_SLACK_SESSION_CANARY'),
     ('xapp-SYNTHETIC_SLACK_APP_CANARY', 'xapp-SYNTHETIC_SLACK_APP_CANARY'),
+    ('https://hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx', 'abcdefghijklmnopqrstuvwx'),
+    ('hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx', 'abcdefghijklmnopqrstuvwx'),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
 )
 
