@@ -25,7 +25,7 @@ const SECRET_PATTERNS = [
   /(?:https?:\/\/)?hooks\.slack\.com\/services\/[A-Za-z0-9]+\/[A-Za-z0-9]+\/[A-Za-z0-9]+/g,
   /\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b/g,
   /\bAKIA[0-9A-Z]{16}\b/g,
-  /\b(?:npm_|hf_|glpat-|sk-|xox[bap]-|gsk_|xai-|sk_live_|sk_test_|dop_v1_|pypi-|sntrys_|whsec_|rk_live_|rk_test_|xoxs-|xapp-)[A-Za-z0-9_\-]+/g,
+  /\b(?:npm_|hf_|glpat-|sk-|xox[bapecs]-|gsk_|xai-|sk_live_|sk_test_|dop_v1_|pypi-|sntrys_|whsec_|rk_live_|rk_test_|xoxs-|xapp-)[A-Za-z0-9_\-]+/g,
   // Match quoted keys/values before standalone Bearer text so JSON strings,
   // embedded spaces, and escaped quotes cannot leave a credential suffix.
   new RegExp(

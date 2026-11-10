@@ -32,7 +32,7 @@ _TOKEN_PATTERN = re.compile(
     r"(?:https?://)?hooks\.slack\.com/services/[A-Za-z0-9]+/[A-Za-z0-9]+/[A-Za-z0-9]+"
     r"|\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b"
     r"|\bAKIA[0-9A-Z]{16}\b"
-    r"|\b(?:npm_|hf_|glpat-|sk-|xox[bap]-|gsk_|xai-|sk_live_|sk_test_|dop_v1_|pypi-|sntrys_|whsec_|rk_live_|rk_test_|xoxs-|xapp-)[A-Za-z0-9_\-]+"
+    r"|\b(?:npm_|hf_|glpat-|sk-|xox[bapecs]-|gsk_|xai-|sk_live_|sk_test_|dop_v1_|pypi-|sntrys_|whsec_|rk_live_|rk_test_|xoxs-|xapp-)[A-Za-z0-9_\-]+"
     r"|[\"']?\b(?:authorization|proxy-authorization|Bearer|token|password|api[_ -]?key|"
     r"access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret)[\"']?\s*[:=]\s*"
     r"(?:(?:Bearer|Basic)\s+)?" + _SECRET_VALUE
