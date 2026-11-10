@@ -208,10 +208,17 @@ class GemmaValidationTests(unittest.TestCase):
             + json.dumps(payload)
             + "\nThanks {user}."
         )
-        self.assertEqual(parse_model_json(text)["summary"], "disk full")
         fenced = "```json\n" + json.dumps(payload) + "\n```"
-        self.assertEqual(parse_model_json(fenced)["failing_step"], "build")
-        self.assertIsNone(parse_model_json("no json here {not-json}"))
+        for parse in (parse_model_json, CLI.parse_model_json):
+            with self.subTest(surface=parse.__module__):
+                self.assertEqual(parse(text), payload)
+                self.assertEqual(parse(fenced), payload)
+                self.assertIsNone(parse("no json here {not-json}"))
+
+        response = {"candidates": [{"content": {"parts": [{"text": text}]}}]}
+        for parse in (nurse_parse_response, CLI.parse_model_response):
+            with self.subTest(response_surface=parse.__module__):
+                self.assertEqual(parse(response), payload)
 
     def test_rules_only_health_does_not_expose_key_presence(self) -> None:
         with patch("nurse.RULES_ONLY", True), patch.dict(os.environ, {"GEMINI_API_KEY": "configured"}):
