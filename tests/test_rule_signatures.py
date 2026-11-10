@@ -32,6 +32,24 @@ class RuleSignatureTests(unittest.TestCase):
                     self.assertEqual(result["patterns"], [])
                     self.assertEqual(result["fix_commands"], [])
 
+    def test_unknown_failure_reports_the_last_started_step(self) -> None:
+        plain = (
+            "##[group]Run actions/checkout@v4\n##[endgroup]\n"
+            "##[group]Run make lint\nlint: 3 problems\n"
+            "##[error]Process completed with exit code 2.\n"
+        )
+        gh_failed = (
+            "build\tSet up job\t2026-11-10T10:00:00.1Z Current runner version: '2.320.0'\n"
+            "build\tRun actions/checkout@v4\t2026-11-10T10:00:01.1Z ##[group]Run actions/checkout@v4\n"
+            "build\tRun make lint\t2026-11-10T10:00:03.1Z ##[group]Run make lint\n"
+            "build\tRun make lint\t2026-11-10T10:00:04.2Z ##[error]Process completed with exit code 2.\n"
+        )
+        for log in (plain, gh_failed):
+            for surface, result in self.diagnoses(log):
+                with self.subTest(surface=surface, log=log[:30]):
+                    self.assertEqual(result["patterns"], [])
+                    self.assertEqual(result["failing_step"], "make lint")
+
     def test_successful_tests_do_not_mask_later_checkout_failure(self) -> None:
         log = (
             "Run pytest -q\n12 passed in 0.2s\n"
