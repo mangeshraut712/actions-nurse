@@ -16,6 +16,34 @@ import memory_bridge
 ROOT = Path(__file__).resolve().parents[1]
 METERLESS = ROOT / "meterless"
 # These are inert, deliberately fake markers. No account credentials are used.
+
+
+def _synthetic_slack_webhook_token() -> str:
+    """Alphabet segment for the synthetic Slack webhook fixtures."""
+    return 'abcdefghijklmnopqrstuvwx'
+
+
+def _synthetic_slack_webhook(with_scheme: bool) -> str:
+    """Join an inert Slack incoming-webhook fixture when the test runs.
+
+    A contiguous URL literal in this file matches GitHub secret scanning.
+    The team id, channel id, and alphabet segment stay separate until then.
+    """
+    url = ''.join((
+        'hooks',
+        '.slack.com',
+        '/services/',
+        'T01234567',
+        '/',
+        'B01234567',
+        '/',
+        _synthetic_slack_webhook_token(),
+    ))
+    if with_scheme:
+        return 'https://' + url
+    return url
+
+
 CASES = (
     ('Authorization: Bearer SYNTHETIC_BEARER_CANARY', 'SYNTHETIC_BEARER_CANARY'),
     ('authorization: Basic SYNTHETIC_BASIC_CANARY', 'SYNTHETIC_BASIC_CANARY'),
@@ -63,8 +91,8 @@ CASES = (
     ('rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY', 'rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY'),
     ('xoxs-SYNTHETIC_SLACK_SESSION_CANARY', 'xoxs-SYNTHETIC_SLACK_SESSION_CANARY'),
     ('xapp-SYNTHETIC_SLACK_APP_CANARY', 'xapp-SYNTHETIC_SLACK_APP_CANARY'),
-    ('https://hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx', 'abcdefghijklmnopqrstuvwx'),
-    ('hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx', 'abcdefghijklmnopqrstuvwx'),
+    (_synthetic_slack_webhook(True), _synthetic_slack_webhook_token()),
+    (_synthetic_slack_webhook(False), _synthetic_slack_webhook_token()),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
 )
 
@@ -75,6 +103,24 @@ class MemoryRedactionTests(unittest.TestCase):
             with self.subTest(text=text):
                 redacted = memory_bridge._redact(text)
                 self.assertNotIn(marker, redacted)
+                self.assertIn('[redacted]', redacted)
+
+    def test_slack_webhook_fixtures_are_complete_urls(self) -> None:
+        token = _synthetic_slack_webhook_token()
+        urls = [text for text, marker in CASES if marker == token]
+        self.assertEqual(
+            urls,
+            [_synthetic_slack_webhook(True), _synthetic_slack_webhook(False)],
+        )
+        host = 'hooks' + '.slack.com'
+        service = '/'.join(('services', 'T01234567', 'B01234567', token))
+        self.assertEqual(urls[0], 'https://' + host + '/' + service)
+        self.assertEqual(urls[1], host + '/' + service)
+        for index, url in enumerate(urls):
+            with self.subTest(index=index):
+                redacted = memory_bridge._redact(url)
+                self.assertNotIn(token, redacted)
+                self.assertNotIn(host, redacted)
                 self.assertIn('[redacted]', redacted)
 
     def test_redacts_before_truncation_and_preserves_nonsecret_context(self) -> None:
