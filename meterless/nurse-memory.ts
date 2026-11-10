@@ -24,7 +24,7 @@ const SECRET_VALUE = String.raw`(?:"(?:\\(?:[\s\S]|$)|[^"\\])*(?:"|$)|'(?:\\(?:[
 const SECRET_PATTERNS = [
   /\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b/g,
   /\bAKIA[0-9A-Z]{16}\b/g,
-  /\b(?:npm_|hf_|glpat-|sk-)[A-Za-z0-9_\-]+/g,
+  /\b(?:npm_|hf_|glpat-|sk-|xox[bap]-|gsk_|xai-)[A-Za-z0-9_\-]+/g,
   // Match quoted keys/values before standalone Bearer text so JSON strings,
   // embedded spaces, and escaped quotes cannot leave a credential suffix.
   new RegExp(
