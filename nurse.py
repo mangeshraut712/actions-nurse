@@ -205,7 +205,7 @@ def rule_triage(log: str) -> TriageResult:
     if runs:
         step = runs[-1].strip()
     return result_from_data({
-        "summary": "CI failed; no known pattern matched — inspect the first error block.",
+        "summary": "CI failed; no known pattern matched — inspect the last started step.",
         "failing_step": step,
         "root_cause": "Unrecognized failure signature in the pasted log.",
         "suggested_fix": "Start with the first Error: line, fix that root cause, and re-run the job.",

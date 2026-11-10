@@ -77,7 +77,7 @@ def rule_triage(log: str) -> dict:
     if runs:
         step = runs[-1].strip()
     return {
-        "summary": "CI failed; no known pattern matched — inspect the last error block.",
+        "summary": "CI failed; no known pattern matched — inspect the last started step.",
         "failing_step": step,
         "root_cause": "Unrecognized failure signature in the pasted log.",
         "suggested_fix": "Scroll to the first Error: line, fix that root cause, and re-run the job.",
