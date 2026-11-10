@@ -29,7 +29,7 @@ _SECRET_VALUE = (
     r"'(?:\\(?:[\s\S]|$)|[^'\\])*(?:'|$)|[^\s,;\"'])+"
 )
 _TOKEN_PATTERN = re.compile(
-    r"\b(?:ghp|github_pat|gho|ghu|ghs)_[A-Za-z0-9_\-]+\b"
+    r"\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b"
     r"|[\"']?\b(?:authorization|proxy-authorization|Bearer|token|password|api[_ -]?key|"
     r"access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret)[\"']?\s*[:=]\s*"
     r"(?:(?:Bearer|Basic)\s+)?" + _SECRET_VALUE

@@ -22,7 +22,7 @@ const MAX_TEXT = 1_600;
 // Keep this value grammar aligned with memory_bridge.py. Redact before slicing.
 const SECRET_VALUE = String.raw`(?:"(?:\\(?:[\s\S]|$)|[^"\\])*(?:"|$)|'(?:\\(?:[\s\S]|$)|[^'\\])*(?:'|$)|[^\s,;"'])+`;
 const SECRET_PATTERNS = [
-  /\b(?:ghp|github_pat|gho|ghu|ghs)_[A-Za-z0-9_\-]+\b/g,
+  /\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_\-]+\b/g,
   // Match quoted keys/values before standalone Bearer text so JSON strings,
   // embedded spaces, and escaped quotes cannot leave a credential suffix.
   new RegExp(
