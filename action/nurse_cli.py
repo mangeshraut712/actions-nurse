@@ -141,17 +141,23 @@ def parse_model_json(text: str) -> dict | None:
         return None
 
     try:
-        parsed = json.loads(text)
-        return first_result(parsed)
+        return first_result(json.loads(text))
     except json.JSONDecodeError:
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            return None
+        pass
+    # Ignore unrelated braces after the first complete JSON object, as the
+    # app parser does. A greedy brace match can discard a valid diagnosis.
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
         try:
-            parsed = json.loads(match.group(0))
-            return first_result(parsed)
+            parsed, _ = decoder.raw_decode(text, index)
         except json.JSONDecodeError:
-            return None
+            continue
+        result = first_result(parsed)
+        if result is not None:
+            return result
+    return None
 
 
 def parse_model_response(response: dict) -> dict | None:
