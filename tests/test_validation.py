@@ -16,6 +16,7 @@ from nurse import (
     guard_model_credential_advice as nurse_guard_credential_advice,
     health,
     enriched_triage,
+    parse_model_json,
     parse_model_response as nurse_parse_response,
     rule_triage,
     validate_gemma_result,
@@ -192,6 +193,25 @@ class GemmaValidationTests(unittest.TestCase):
                 self.assertIn("read-only contents access", safe["suggested_fix"])
                 self.assertNotIn("repo' scope", safe["suggested_fix"])
                 self.assertEqual(safe["fix_commands"], [])
+
+
+    def test_parse_model_json_ignores_later_unrelated_braces(self) -> None:
+        payload = {
+            "summary": "disk full",
+            "failing_step": "build",
+            "root_cause": "ENOSPC",
+            "suggested_fix": "free space",
+            "confidence": "high",
+        }
+        text = (
+            "Here is the diagnosis:\n"
+            + json.dumps(payload)
+            + "\nThanks {user}."
+        )
+        self.assertEqual(parse_model_json(text)["summary"], "disk full")
+        fenced = "```json\n" + json.dumps(payload) + "\n```"
+        self.assertEqual(parse_model_json(fenced)["failing_step"], "build")
+        self.assertIsNone(parse_model_json("no json here {not-json}"))
 
     def test_rules_only_health_does_not_expose_key_presence(self) -> None:
         with patch("nurse.RULES_ONLY", True), patch.dict(os.environ, {"GEMINI_API_KEY": "configured"}):

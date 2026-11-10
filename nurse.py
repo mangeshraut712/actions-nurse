@@ -499,17 +499,23 @@ def parse_model_json(text: str) -> Optional[dict[str, Any]]:
         return None
 
     try:
-        parsed = json.loads(text)
-        return first_result(parsed)
+        return first_result(json.loads(text))
     except json.JSONDecodeError:
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            return None
+        pass
+    # A greedy "{...}" match reaches the last brace in the string, so prose
+    # like "Thanks {user}." after a valid object made the parse fail.
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
         try:
-            parsed = json.loads(match.group(0))
-            return first_result(parsed)
+            parsed, _ = decoder.raw_decode(text, index)
         except json.JSONDecodeError:
-            return None
+            continue
+        result = first_result(parsed)
+        if result is not None:
+            return result
+    return None
 
 
 def parse_model_response(response: Any) -> Optional[dict[str, Any]]:
