@@ -198,9 +198,12 @@ def rule_triage(log: str) -> TriageResult:
         if re.search(pattern, log, re.I):
             return result_from_data(payload, engine="rules", patterns=[pattern])
     step = "Unknown step"
-    m = re.search(r"^##\[group\]Run (.+)$", log, re.M) or re.search(r"^Run (.+)$", log, re.M)
-    if m:
-        step = m.group(1).strip()
+    # The failing step is the last one started, not the first (usually checkout).
+    # `gh run view --log-failed` prefixes each line with "job<TAB>step<TAB>timestamp ",
+    # so the group marker is not at the start of the line there.
+    runs = re.findall(r"##\[group\]Run (.+)$", log, re.M) or re.findall(r"^Run (.+)$", log, re.M)
+    if runs:
+        step = runs[-1].strip()
     return result_from_data({
         "summary": "CI failed; no known pattern matched — inspect the first error block.",
         "failing_step": step,
