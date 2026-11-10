@@ -50,6 +50,9 @@ CASES = (
     ('hf_abcdefghijklmnopqrstuvwxyz012345', 'hf_abcdefghijklmnopqrstuvwxyz012345'),
     ('glpat-abcdefghijklmnopqrstuv', 'glpat-abcdefghijklmnopqrstuv'),
     ('sk-abcdefghijklmnopqrstuvwxyz0123456789', 'sk-abcdefghijklmnopqrstuvwxyz0123456789'),
+    ('xoxb-SYNTHETIC_SLACK_BOT_CANARY', 'xoxb-SYNTHETIC_SLACK_BOT_CANARY'),
+    ('gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789', 'gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789'),
+    ('xai-abcdefghijklmnopqrstuvwxyz0123456789', 'xai-abcdefghijklmnopqrstuvwxyz0123456789'),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
 )
 
