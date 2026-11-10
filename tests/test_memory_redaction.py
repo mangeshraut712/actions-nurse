@@ -43,6 +43,13 @@ CASES = (
     ('password="SYNTHETIC_ESCAPED_LINE\\\nSYNTHETIC_LINE_REMAINDER"', 'SYNTHETIC_LINE_REMAINDER'),
     ('password="SYNTHETIC_PREFIX"SYNTHETIC_CONCAT_SUFFIX', 'SYNTHETIC_CONCAT_SUFFIX'),
     ("password='SYNTHETIC_PREFIX'SYNTHETIC_SINGLE_SUFFIX", 'SYNTHETIC_SINGLE_SUFFIX'),
+    ('AKIAIOSFODNN7EXAMPLE', 'AKIAIOSFODNN7EXAMPLE'),
+    ('AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE', 'AKIAIOSFODNN7EXAMPLE'),
+    ('AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'),
+    ('npm_abcdefghijklmnopqrstuvwxyz0123456789abcd', 'npm_abcdefghijklmnopqrstuvwxyz0123456789abcd'),
+    ('hf_abcdefghijklmnopqrstuvwxyz012345', 'hf_abcdefghijklmnopqrstuvwxyz012345'),
+    ('glpat-abcdefghijklmnopqrstuv', 'glpat-abcdefghijklmnopqrstuv'),
+    ('sk-abcdefghijklmnopqrstuvwxyz0123456789', 'sk-abcdefghijklmnopqrstuvwxyz0123456789'),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
 )
 
