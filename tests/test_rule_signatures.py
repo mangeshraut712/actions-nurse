@@ -49,6 +49,8 @@ class RuleSignatureTests(unittest.TestCase):
                 with self.subTest(surface=surface, log=log[:30]):
                     self.assertEqual(result["patterns"], [])
                     self.assertEqual(result["failing_step"], "make lint")
+                    self.assertIn("last started step", result["summary"])
+                    self.assertNotIn("first error block", result["summary"])
 
     def test_successful_tests_do_not_mask_later_checkout_failure(self) -> None:
         log = (
