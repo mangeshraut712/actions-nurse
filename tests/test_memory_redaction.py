@@ -53,6 +53,10 @@ CASES = (
     ('xoxb-SYNTHETIC_SLACK_BOT_CANARY', 'xoxb-SYNTHETIC_SLACK_BOT_CANARY'),
     ('gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789', 'gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789'),
     ('xai-abcdefghijklmnopqrstuvwxyz0123456789', 'xai-abcdefghijklmnopqrstuvwxyz0123456789'),
+    ('sk_live_SYNTHETIC_STRIPE_LIVE_CANARY', 'sk_live_SYNTHETIC_STRIPE_LIVE_CANARY'),
+    ('dop_v1_SYNTHETIC_DIGITALOCEAN_CANARY', 'dop_v1_SYNTHETIC_DIGITALOCEAN_CANARY'),
+    ('pypi-SYNTHETIC_PYPI_CANARY', 'pypi-SYNTHETIC_PYPI_CANARY'),
+    ('sntrys_SYNTHETIC_SENTRY_CANARY', 'sntrys_SYNTHETIC_SENTRY_CANARY'),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
 )
 
