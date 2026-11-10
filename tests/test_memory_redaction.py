@@ -51,6 +51,8 @@ CASES = (
     ('glpat-abcdefghijklmnopqrstuv', 'glpat-abcdefghijklmnopqrstuv'),
     ('sk-abcdefghijklmnopqrstuvwxyz0123456789', 'sk-abcdefghijklmnopqrstuvwxyz0123456789'),
     ('xoxb-SYNTHETIC_SLACK_BOT_CANARY', 'xoxb-SYNTHETIC_SLACK_BOT_CANARY'),
+    ('xoxe-SYNTHETIC_SLACK_EXCHANGE_CANARY', 'xoxe-SYNTHETIC_SLACK_EXCHANGE_CANARY'),
+    ('xoxc-SYNTHETIC_SLACK_CONFIG_CANARY', 'xoxc-SYNTHETIC_SLACK_CONFIG_CANARY'),
     ('gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789', 'gsk_abcdefghijklmnopqrstuvwxyzABCDEF0123456789'),
     ('xai-abcdefghijklmnopqrstuvwxyz0123456789', 'xai-abcdefghijklmnopqrstuvwxyz0123456789'),
     ('sk_live_SYNTHETIC_STRIPE_LIVE_CANARY', 'sk_live_SYNTHETIC_STRIPE_LIVE_CANARY'),
