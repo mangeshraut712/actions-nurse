@@ -534,6 +534,9 @@ def parse_model_json(text: str) -> Optional[dict[str, Any]]:
     return None
 
 
+DIAGNOSIS_KEYS = ("summary", "failing_step", "root_cause", "suggested_fix")
+
+
 def parse_model_response(response: Any) -> Optional[dict[str, Any]]:
     """Find the final JSON object across GenerateContent text parts.
 
@@ -639,10 +642,12 @@ def gemma_triage(log: str, model: str, image: Optional[tuple[str, bytes]] = None
             if r.status_code == 200:
                 response = r.json()
                 data = parse_model_response(response)
-                if data:
+                # JSON like {"error": "quota exceeded"} has no diagnosis; result_from_data
+                # would fill defaults and hide the rules fallback behind an empty answer.
+                if data and any(str(data.get(key) or "").strip() for key in DIAGNOSIS_KEYS):
                     data = guard_model_credential_advice(data)
                     return result_from_data(data, engine="gemma", model=m_name)
-                logger.warning("Gemma returned no parseable final JSON for model %s", m_name)
+                logger.warning("Gemma returned no parseable diagnosis JSON for model %s", m_name)
             else:
                 logger.warning("Gemma model %s returned HTTP %d", m_name, r.status_code)
         except httpx.TimeoutException:

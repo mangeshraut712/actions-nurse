@@ -36,5 +36,23 @@ class GemmaUrlTests(unittest.TestCase):
         )
 
 
+class GemmaDiagnosisTests(unittest.TestCase):
+    def test_json_without_diagnosis_fields_falls_back(self):
+        import json
+
+        class _Ok:
+            status_code = 200
+
+            def json(self):
+                text = json.dumps({"error": "quota exceeded"})
+                return {"candidates": [{"content": {"parts": [{"text": text}]}}]}
+
+        fake_httpx = types.SimpleNamespace(post=lambda url, **kwargs: _Ok(), TimeoutException=TimeoutError)
+        with patch.dict(sys.modules, {"httpx": fake_httpx}), patch.dict(
+            "os.environ", {"GEMINI_API_KEY": "test-key"}
+        ):
+            self.assertIsNone(nurse.gemma_triage("error: boom", "gemma-test"))
+
+
 if __name__ == "__main__":
     unittest.main()
