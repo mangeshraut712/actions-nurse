@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any, Optional
 
@@ -595,7 +596,13 @@ def gemma_triage(log: str, model: str, image: Optional[tuple[str, bytes]] = None
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             break
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
+        # The model name comes from the request; keep it a single path segment
+        # (as action/nurse_cli.py does) so "/", "?" or "../" cannot reshape the URL.
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            + urllib.parse.quote(m_name, safe="")
+            + ":generateContent"
+        )
         parts: list[dict[str, Any]] = [{"text": prompt}]
         if image:
             mime, raw = image
