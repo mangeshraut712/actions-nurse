@@ -33,15 +33,30 @@ from memory_bridge import (
 
 ROOT = Path(__file__).resolve().parent
 
-try:
-    from dotenv import dotenv_values
+def load_app_env(root: Path = ROOT) -> None:
+    """Apply `.env`, then `.env.local`, under any value already in the process.
 
+    `.env.example` tells users to put GEMINI_API_KEY in `.env.local`, so that
+    file has to be read here too, with precedence over `.env`.
+    """
+    try:
+        from dotenv import dotenv_values
+    except ImportError:
+        return
+    values: dict[str, str] = {}
+    for path in (root / ".env", root / ".env.local"):
+        if path.is_file():
+            values.update({k: v for k, v in dotenv_values(path).items() if k and v is not None})
     # Zetaris owns its own explicit `.env` → `.env.local` → shell precedence.
     # Do not pre-populate its keys here, otherwise an `.env` value would appear
     # indistinguishable from an explicitly supplied process environment value.
-    for _key, _value in dotenv_values(ROOT / ".env").items():
-        if _key and _value is not None and not _key.startswith("ZETARIS_"):
-            os.environ.setdefault(_key, _value)
+    for key, value in values.items():
+        if not key.startswith("ZETARIS_"):
+            os.environ.setdefault(key, value)
+
+
+try:
+    load_app_env()
 except Exception:
     pass
 
