@@ -18,6 +18,15 @@ METERLESS = ROOT / "meterless"
 # These are inert, deliberately fake markers. No account credentials are used.
 
 
+def _synthetic_google_api_key() -> str:
+    """Join an inert Google API key fixture when the test runs.
+
+    A contiguous AIza literal in this file can match GitHub secret scanning.
+    The prefix and body stay separate until then.
+    """
+    return ''.join(('AI', 'zaSy', 'SYNTHETIC_GOOGLE_API_CANARY00'))
+
+
 def _synthetic_slack_webhook_token() -> str:
     """Alphabet segment for the synthetic Slack webhook fixtures."""
     return 'abcdefghijklmnopqrstuvwx'
@@ -91,6 +100,7 @@ CASES = (
     ('rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY', 'rk_live_SYNTHETIC_STRIPE_RESTRICTED_CANARY'),
     ('xoxs-SYNTHETIC_SLACK_SESSION_CANARY', 'xoxs-SYNTHETIC_SLACK_SESSION_CANARY'),
     ('xapp-SYNTHETIC_SLACK_APP_CANARY', 'xapp-SYNTHETIC_SLACK_APP_CANARY'),
+    (_synthetic_google_api_key(), _synthetic_google_api_key()),
     (_synthetic_slack_webhook(True), _synthetic_slack_webhook_token()),
     (_synthetic_slack_webhook(False), _synthetic_slack_webhook_token()),
     ('password=\'SYNTHETIC_PREFIX\'"SYNTHETIC_MIXED suffix"', 'suffix'),
