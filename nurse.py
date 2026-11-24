@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import time
 import urllib.parse
 from pathlib import Path
@@ -208,15 +209,29 @@ def result_from_data(data: dict[str, Any], *, engine: str, model: str = "", patt
     )
 
 
-PYTEST_FAILED_NODE = re.compile(r"\bFAILED (\S+\.py::\S+)")
+# One line of pytest's short summary: "FAILED <node id>" or "FAILED <node id> - <reason>",
+# optionally behind the "job<TAB>step<TAB>timestamp " prefix from `gh run view --log-failed`.
+# The node id is limited to characters that cannot change a shell command, and indented
+# assertion text (for example "E   FAILED ...") does not match.
+PYTEST_FAILED_NODE = re.compile(
+    r"^(?:[^\t\n]*\t[^\t\n]*\t\S+ )?FAILED ([\w./-]{1,120}\.py::[\w.:\[\]-]{1,60})(?: - .*)?$",
+    re.M,
+)
 
 
 def with_failed_test_selector(payload: dict[str, Any], log: str) -> dict[str, Any]:
-    """Point the pytest re-run at the first test the log names as FAILED."""
-    match = PYTEST_FAILED_NODE.search(log)
-    if not match or payload.get("fix_commands") != ["pytest -q"]:
+    """Point the pytest re-run at the first test that pytest's summary reports as FAILED.
+
+    Node ids with spaces or other characters fall back to the whole suite instead of a
+    partial or shell-unsafe selector.
+    """
+    if payload.get("fix_commands") != ["pytest -q"]:
         return payload
-    return {**payload, "fix_commands": [f"pytest -q {match.group(1)}"]}
+    marker = log.rfind("short test summary info")
+    match = PYTEST_FAILED_NODE.search(log, marker if marker != -1 else 0)
+    if not match:
+        return payload
+    return {**payload, "fix_commands": [f"pytest -q {shlex.quote(match.group(1))}"]}
 
 
 def rule_triage(log: str) -> TriageResult:

@@ -228,18 +228,42 @@ class GemmaValidationTests(unittest.TestCase):
 
 
 class PytestRuleSelectorTests(unittest.TestCase):
-    def test_pytest_rerun_targets_the_test_named_in_the_log(self) -> None:
+    def both(self, log: str) -> list[list[str]]:
+        return [rule_triage(log).fix_commands, CLI.rule_triage(log)["fix_commands"]]
+
+    def test_pytest_rerun_targets_the_test_named_in_the_summary(self) -> None:
         log = (
             "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_dates[utc] - AssertionError\n"
             "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_other\n"
         )
-        self.assertEqual(rule_triage(log).fix_commands, ["pytest -q tests/unit/test_parse.py::test_dates[utc]"])
-        self.assertEqual(CLI.rule_triage(log)["fix_commands"], ["pytest -q tests/unit/test_parse.py::test_dates[utc]"])
+        expected = ["pytest -q 'tests/unit/test_parse.py::test_dates[utc]'"]
+        self.assertEqual(self.both(log), [expected, expected])
+
+    def test_demo_fixture_keeps_its_selector(self) -> None:
+        log = (ROOT / "fixtures" / "pytest-assert.txt").read_text(encoding="utf-8")
+        expected = ["pytest -q tests/test_tools.py::test_spill_volume_last_month"]
+        self.assertEqual(self.both(log), [expected, expected])
 
     def test_pytest_rerun_falls_back_to_the_whole_suite(self) -> None:
-        log = "E   AssertionError: assert 1 == 2\n"
-        self.assertEqual(rule_triage(log).fix_commands, ["pytest -q"])
-        self.assertEqual(CLI.rule_triage(log)["fix_commands"], ["pytest -q"])
+        logs = {
+            "no summary line": "E   AssertionError: assert 1 == 2\n",
+            "space in parameter id": "FAILED tests/test_parse.py::test_dates[two words] - AssertionError\n",
+            "shell syntax in parameter id": "FAILED tests/test_parse.py::test_dates[a(b)] - AssertionError\n",
+            "command substitution": "FAILED tests/x.py::t$(touch /tmp/pwn)\n",
+            "quoted in assertion text": "E   AssertionError: FAILED tests/other.py::test_x\n",
+        }
+        for name, log in logs.items():
+            with self.subTest(name):
+                self.assertEqual(self.both(log), [["pytest -q"], ["pytest -q"]])
+
+    def test_summary_section_wins_over_earlier_output(self) -> None:
+        log = (
+            "FAILED tests/old.py::test_from_captured_stdout\n"
+            "=========================== short test summary info ============================\n"
+            "FAILED tests/new.py::test_real\n"
+        )
+        expected = ["pytest -q tests/new.py::test_real"]
+        self.assertEqual(self.both(log), [expected, expected])
 
 
 class ActionReportWriteTests(unittest.TestCase):
