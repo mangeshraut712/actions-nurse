@@ -227,5 +227,72 @@ class GemmaValidationTests(unittest.TestCase):
         self.assertFalse(status["gemma_key"])
 
 
+class PytestRuleSelectorTests(unittest.TestCase):
+    def both(self, log: str) -> list[list[str]]:
+        return [rule_triage(log).fix_commands, CLI.rule_triage(log)["fix_commands"]]
+
+    def test_pytest_rerun_targets_the_test_named_in_the_summary(self) -> None:
+        log = (
+            "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_dates[utc] - AssertionError\n"
+            "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_other\n"
+        )
+        expected = ["pytest -q 'tests/unit/test_parse.py::test_dates[utc]'"]
+        self.assertEqual(self.both(log), [expected, expected])
+
+    def test_timestamped_job_log_and_class_node_ids(self) -> None:
+        log = (
+            "2026-11-25T00:00:00.1234567Z FAILED "
+            "tests/integration/test_checkout_flow.py::TestCheckoutWithSavedCards::test_declined_card_shows_retry_banner\n"
+        )
+        expected = [
+            "pytest -q tests/integration/test_checkout_flow.py::"
+            "TestCheckoutWithSavedCards::test_declined_card_shows_retry_banner"
+        ]
+        self.assertEqual(self.both(log), [expected, expected])
+
+    def test_demo_fixture_keeps_its_selector(self) -> None:
+        log = (ROOT / "fixtures" / "pytest-assert.txt").read_text(encoding="utf-8")
+        expected = ["pytest -q tests/test_tools.py::test_spill_volume_last_month"]
+        self.assertEqual(self.both(log), [expected, expected])
+
+    def test_pytest_rerun_falls_back_to_the_whole_suite(self) -> None:
+        logs = {
+            "no summary line": "E   AssertionError: assert 1 == 2\n",
+            "space in parameter id": "FAILED tests/test_parse.py::test_dates[two words] - AssertionError\n",
+            "shell syntax in parameter id": "FAILED tests/test_parse.py::test_dates[a(b)] - AssertionError\n",
+            "command substitution": "FAILED tests/x.py::t$(touch /tmp/pwn)\n",
+            "quoted in assertion text": "E   AssertionError: FAILED tests/other.py::test_x\n",
+        }
+        for name, log in logs.items():
+            with self.subTest(name):
+                self.assertEqual(self.both(log), [["pytest -q"], ["pytest -q"]])
+
+    def test_summary_section_wins_over_earlier_output(self) -> None:
+        log = (
+            "FAILED tests/old.py::test_from_captured_stdout\n"
+            "=========================== short test summary info ============================\n"
+            "FAILED tests/new.py::test_real\n"
+        )
+        expected = ["pytest -q tests/new.py::test_real"]
+        self.assertEqual(self.both(log), [expected, expected])
+
+
+class ActionReportWriteTests(unittest.TestCase):
+    def test_report_is_written_as_utf8_into_a_missing_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "job.log"
+            log_path.write_text(CHECKOUT_LOG, encoding="utf-8")
+            out_path = Path(tmp) / "reports" / "nurse.md"
+            env = {
+                "NURSE_LOG_PATH": str(log_path),
+                "NURSE_OUTPUT": str(out_path),
+                "NURSE_RULES_ONLY": "true",
+                "GITHUB_OUTPUT": str(Path(tmp) / "out.txt"),
+            }
+            with patch.dict(os.environ, env, clear=False):
+                self.assertEqual(CLI.main(), 0)
+            self.assertIn("🩺", out_path.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
