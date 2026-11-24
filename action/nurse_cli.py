@@ -66,11 +66,12 @@ RULES = [
 
 
 # One line of pytest's short summary: "FAILED <node id>" or "FAILED <node id> - <reason>",
-# optionally behind the "job<TAB>step<TAB>timestamp " prefix from `gh run view --log-failed`.
+# optionally behind the "job<TAB>step<TAB>" prefix from `gh run view --log-failed` and the
+# ISO timestamp that Actions puts on each line of a downloaded job log.
 # The node id is limited to characters that cannot change a shell command, and indented
 # assertion text (for example "E   FAILED ...") does not match.
 PYTEST_FAILED_NODE = re.compile(
-    r"^(?:[^\t\n]*\t[^\t\n]*\t\S+ )?FAILED ([\w./-]{1,120}\.py::[\w.:\[\]-]{1,60})(?: - .*)?$",
+    r"^(?:[^\t\n]*\t[^\t\n]*\t)?(?:\d{4}-\d\d-\d\dT[\d:.]+Z )?FAILED ([\w./-]{1,100}\.py::[\w.:\[\]-]{1,80})(?: - .*)?$",
     re.M,
 )
 

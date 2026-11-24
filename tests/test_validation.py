@@ -239,6 +239,17 @@ class PytestRuleSelectorTests(unittest.TestCase):
         expected = ["pytest -q 'tests/unit/test_parse.py::test_dates[utc]'"]
         self.assertEqual(self.both(log), [expected, expected])
 
+    def test_timestamped_job_log_and_class_node_ids(self) -> None:
+        log = (
+            "2026-11-25T00:00:00.1234567Z FAILED "
+            "tests/integration/test_checkout_flow.py::TestCheckoutWithSavedCards::test_declined_card_shows_retry_banner\n"
+        )
+        expected = [
+            "pytest -q tests/integration/test_checkout_flow.py::"
+            "TestCheckoutWithSavedCards::test_declined_card_shows_retry_banner"
+        ]
+        self.assertEqual(self.both(log), [expected, expected])
+
     def test_demo_fixture_keeps_its_selector(self) -> None:
         log = (ROOT / "fixtures" / "pytest-assert.txt").read_text(encoding="utf-8")
         expected = ["pytest -q tests/test_tools.py::test_spill_volume_last_month"]
