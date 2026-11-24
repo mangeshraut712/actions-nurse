@@ -64,11 +64,22 @@ RULES = [
 ]
 
 
+PYTEST_FAILED_NODE = re.compile(r"\bFAILED (\S+\.py::\S+)")
+
+
+def with_failed_test_selector(payload: dict, log: str) -> dict:
+    """Point the pytest re-run at the first test the log names as FAILED."""
+    match = PYTEST_FAILED_NODE.search(log)
+    if not match or payload.get("fix_commands") != ["pytest -q"]:
+        return payload
+    return {**payload, "fix_commands": [f"pytest -q {match.group(1)}"]}
+
+
 def rule_triage(log: str) -> dict:
     # Check the specific runner-capacity signal before broad package-manager noise.
     for pattern, payload in sorted(RULES, key=lambda item: "ENOSPC" not in item[0]):
         if re.search(pattern, log, re.I):
-            return {**payload, "engine": "rules", "patterns": [pattern]}
+            return {**with_failed_test_selector(payload, log), "engine": "rules", "patterns": [pattern]}
     step = "Unknown step"
     # The failing step is the last one started, not the first (usually checkout).
     # `gh run view --log-failed` prefixes each line with "job<TAB>step<TAB>timestamp ",
@@ -303,7 +314,7 @@ Built with Gemma 4 + offline Rules
 
 def maybe_fetch_failed_job_log(run_id: str) -> str | None:
     """Fetch only failed-step output from the workflow run when gh is available."""
-    if not run_id or not os.environ.get("GITHUB_TOKEN"):
+    if not run_id or not (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")):
         return None
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not repo:
@@ -341,7 +352,8 @@ def main() -> int:
     candidate = gemma_triage(log, model, key) if key and not rules_only else None
     baseline = rule_triage(log)
     result = final_triage(candidate, baseline)
-    out_path.write_text(to_markdown(result))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(to_markdown(result), encoding="utf-8")
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
         with open(gh_out, "a", encoding="utf-8") as f:

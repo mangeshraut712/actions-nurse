@@ -130,7 +130,7 @@ RULES: list[tuple[str, dict[str, str]]] = [
             "suggested_fix": "Open the named test, recompute expected values from fixtures, or fix the code under test.",
             "confidence": "high",
             "summary": "CI failed because a pytest assertion did not match.",
-            "fix_commands": ["pytest -q tests/test_tools.py::test_spill_volume_last_month"],
+            "fix_commands": ["pytest -q"],
         },
     ),
     (
@@ -208,11 +208,22 @@ def result_from_data(data: dict[str, Any], *, engine: str, model: str = "", patt
     )
 
 
+PYTEST_FAILED_NODE = re.compile(r"\bFAILED (\S+\.py::\S+)")
+
+
+def with_failed_test_selector(payload: dict[str, Any], log: str) -> dict[str, Any]:
+    """Point the pytest re-run at the first test the log names as FAILED."""
+    match = PYTEST_FAILED_NODE.search(log)
+    if not match or payload.get("fix_commands") != ["pytest -q"]:
+        return payload
+    return {**payload, "fix_commands": [f"pytest -q {match.group(1)}"]}
+
+
 def rule_triage(log: str) -> TriageResult:
     # Check the specific runner-capacity signal before broad package-manager noise.
     for pattern, payload in sorted(RULES, key=lambda item: "ENOSPC" not in item[0]):
         if re.search(pattern, log, re.I):
-            return result_from_data(payload, engine="rules", patterns=[pattern])
+            return result_from_data(with_failed_test_selector(payload, log), engine="rules", patterns=[pattern])
     step = "Unknown step"
     # The failing step is the last one started, not the first (usually checkout).
     # `gh run view --log-failed` prefixes each line with "job<TAB>step<TAB>timestamp ",

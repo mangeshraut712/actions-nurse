@@ -227,5 +227,37 @@ class GemmaValidationTests(unittest.TestCase):
         self.assertFalse(status["gemma_key"])
 
 
+class PytestRuleSelectorTests(unittest.TestCase):
+    def test_pytest_rerun_targets_the_test_named_in_the_log(self) -> None:
+        log = (
+            "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_dates[utc] - AssertionError\n"
+            "build\tRun tests\t2026-11-25T00:00:00Z FAILED tests/unit/test_parse.py::test_other\n"
+        )
+        self.assertEqual(rule_triage(log).fix_commands, ["pytest -q tests/unit/test_parse.py::test_dates[utc]"])
+        self.assertEqual(CLI.rule_triage(log)["fix_commands"], ["pytest -q tests/unit/test_parse.py::test_dates[utc]"])
+
+    def test_pytest_rerun_falls_back_to_the_whole_suite(self) -> None:
+        log = "E   AssertionError: assert 1 == 2\n"
+        self.assertEqual(rule_triage(log).fix_commands, ["pytest -q"])
+        self.assertEqual(CLI.rule_triage(log)["fix_commands"], ["pytest -q"])
+
+
+class ActionReportWriteTests(unittest.TestCase):
+    def test_report_is_written_as_utf8_into_a_missing_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "job.log"
+            log_path.write_text(CHECKOUT_LOG, encoding="utf-8")
+            out_path = Path(tmp) / "reports" / "nurse.md"
+            env = {
+                "NURSE_LOG_PATH": str(log_path),
+                "NURSE_OUTPUT": str(out_path),
+                "NURSE_RULES_ONLY": "true",
+                "GITHUB_OUTPUT": str(Path(tmp) / "out.txt"),
+            }
+            with patch.dict(os.environ, env, clear=False):
+                self.assertEqual(CLI.main(), 0)
+            self.assertIn("🩺", out_path.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
