@@ -102,7 +102,13 @@ def validate_read_only_sql(sql: str) -> str:
 
 
 def _escape_sql_literal(value: str) -> str:
-    return value.replace("'", "''")
+    """Escape text for a single-quoted Zetaris (Spark SQL) string literal.
+
+    Spark SQL processes backslash escapes inside literals, so doubling the
+    quote alone is not enough: a step named ``x\\' OR 1=1 --`` would close the
+    literal early. Escape backslashes first, then quotes, the Spark way.
+    """
+    return value.replace("\\", "\\\\").replace("'", "\\'")
 
 
 def _safe_evidence_text(value: Any, *, limit: int = 800) -> str:

@@ -267,6 +267,25 @@ class ZetarisClientTests(unittest.TestCase):
 
         self.assertIn("FROM actions_nurse_demo.ci_failure_signatures", result["result"]["sql"])
 
+    def test_ci_evidence_step_stays_inside_one_spark_string_literal(self) -> None:
+        def spark_literal_and_rest(sql: str) -> tuple[str, str]:
+            """Read the WHERE literal the way Spark SQL does (backslash escapes, quote closes)."""
+            start = sql.index("failing_step = '") + len("failing_step = '")
+            out, i = [], start
+            while sql[i] != "'":
+                if sql[i] == "\\":
+                    i += 1
+                out.append(sql[i])
+                i += 1
+            return "".join(out), sql[i + 1:]
+
+        client = ZetarisClient(environment={})
+        for step in ["Typecheck / tsc", "it's", "x\\' OR 1=1 --", "a\\\\' UNION SELECT 1 --", "trailing\\"]:
+            sql = client.query_ci_evidence(step)["result"]["sql"]
+            literal, rest = spark_literal_and_rest(sql)
+            self.assertEqual(literal, step)
+            self.assertEqual(rest, " ORDER BY observed_at DESC LIMIT 3")
+
     def test_invalid_ci_evidence_table_name_cannot_reach_live_querying(self) -> None:
         client = ZetarisClient(environment={
             "ZETARIS_CI_EVIDENCE_TABLE": "ci_failure_signatures; DROP TABLE anything",
