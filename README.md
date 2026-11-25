@@ -181,7 +181,7 @@ For the optional Gemma path, set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) and leav
 GEMINI_API_KEY=your-key NURSE_RULES_ONLY=false uvicorn nurse:app --host 127.0.0.1 --port 8787
 ```
 
-Open <http://127.0.0.1:8787>. The browser includes the five fixtures and a bundled red-Action screenshot. The core endpoints remain `/api/health`, `/api/triage`, `/api/triage-image`, and `/api/compare`; sponsor integration endpoints expose memory, Zetaris preflight, and the latest activity trace without changing the original routes.
+Open <http://127.0.0.1:8787>. The browser includes the five fixtures and a bundled red-Action screenshot. The core endpoints remain `/api/health`, `/api/triage`, `/api/triage-image`, `/api/compare`, and `/api/compare-image`; sponsor integration endpoints expose memory, Zetaris preflight, and the latest activity trace without changing the original routes.
 
 - `GET /api/zetaris/preflight` runs direct-REST `SELECT 1` plus `SHOW LIGHTNING DATABASES`; local-session mode uses two `SELECT` probes because its UI proxy accepts `SELECT` only.
 - `POST /api/memory/seed`, `/api/memory/ask`, and `/api/memory/remember` expose the real H-MEM bridge; `GET /api/memory/audit/{id}` returns its Trust Ledger history.
@@ -216,6 +216,21 @@ ZETARIS_FIXTURE_MODE=1 NURSE_RULES_ONLY=true bash scripts/smoke_agentathon.sh
 The sponsor smoke command requires the documented Meterless setup, starts only
 a temporary loopback server when no base URL is supplied, and leaves tracked
 demo artifacts unchanged.
+
+CI goes further: it builds the Docker Compose deployment and, against the
+container on port `8787`, runs `bash scripts/smoke.sh` (the original routes,
+including `/api/compare-image`), then `bash scripts/smoke_agentathon.sh
+http://127.0.0.1:8787` in reuse mode, then direct `/api/memory/seed` and
+`/api/memory/ask` checks. To reproduce that locally after `docker compose up -d --build`:
+
+```bash
+bash scripts/smoke.sh
+bash scripts/smoke_agentathon.sh http://127.0.0.1:8787
+```
+
+`npm run memory -- seed` in the install steps is an optional check that the vendored
+engine loads. The smoke path doesn't need it, because `scripts/smoke_agentathon.sh`
+seeds its own temporary store (`NURSE_HMEM_DIR`).
 
 Committed, sanitized examples live in:
 
