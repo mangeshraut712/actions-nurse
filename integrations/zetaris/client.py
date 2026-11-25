@@ -102,7 +102,49 @@ def validate_read_only_sql(sql: str) -> str:
 
 
 def _escape_sql_literal(value: str) -> str:
-    return value.replace("'", "''")
+    """Escape text for a single-quoted Zetaris (Spark SQL) string literal.
+
+    Spark SQL processes backslash escapes inside literals, so doubling the
+    quote alone is not enough: a step named ``x\\' OR 1=1 --`` would close the
+    literal early. Escape backslashes first, then quotes, the Spark way.
+    """
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _read_spark_sql_string(sql: str, opening_quote: int) -> tuple[str, int]:
+    """Decode a single-quoted Spark SQL literal starting at the opening quote.
+
+    Spark processes backslash escapes inside the literal, and the first
+    unescaped quote closes it. Returns the decoded text and the index just
+    after the closing quote.
+    """
+    if opening_quote >= len(sql) or sql[opening_quote] != "'":
+        raise ValueError("expected a single-quoted Spark SQL literal")
+    out: list[str] = []
+    index = opening_quote + 1
+    while index < len(sql):
+        char = sql[index]
+        if char == "\\":
+            index += 1
+            if index >= len(sql):
+                raise ValueError("unterminated Spark SQL string literal")
+            out.append(sql[index])
+            index += 1
+            continue
+        if char == "'":
+            return "".join(out), index + 1
+        out.append(char)
+        index += 1
+    raise ValueError("unterminated Spark SQL string literal")
+
+
+def _failing_step_from_where(sql: str) -> str | None:
+    """Return the decoded failing_step literal from a WHERE equality predicate."""
+    match = re.search(r"\bWHERE\s+failing_step\s*=\s*'", sql, re.I)
+    if not match:
+        return None
+    value, _ = _read_spark_sql_string(sql, match.end() - 1)
+    return value
 
 
 def _safe_evidence_text(value: Any, *, limit: int = 800) -> str:
@@ -351,9 +393,11 @@ class ZetarisClient:
 
         # Make the recorded evidence behave like the query's equality predicate
         # while keeping every fixture record inspectable in version control.
-        step_match = re.search(r"\bWHERE\s+failing_step\s*=\s*'((?:''|[^'])*)'", sql, re.I)
-        if name == "ci-failure-signatures.json" and step_match:
-            requested_step = step_match.group(1).replace("''", "'")
+        try:
+            requested_step = _failing_step_from_where(sql)
+        except ValueError:
+            requested_step = None
+        if name == "ci-failure-signatures.json" and requested_step is not None:
             rows = [row for row in rows if len(row) > 1 and row[1] == requested_step]
 
         return {
