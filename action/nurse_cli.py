@@ -242,6 +242,9 @@ def clip_log(log: str, limit: int) -> str:
     return log[:head] + marker + log[len(log) - tail:]
 
 
+DIAGNOSIS_KEYS = ("summary", "failing_step", "root_cause", "suggested_fix")
+
+
 def gemma_triage(log: str, model: str, key: str) -> dict | None:
     """Gemma-first triage with a total 20-second budget before rules."""
     prompt = (
@@ -277,18 +280,22 @@ def gemma_triage(log: str, model: str, key: str) -> dict | None:
             with urllib.request.urlopen(req, timeout=remaining) as resp:
                 data = json.loads(resp.read().decode())
             parsed = parse_model_response(data)
-            if not parsed:
+            # Same rule as nurse.py: JSON with no diagnosis fields falls back to rules.
+            if not parsed or not any(str(parsed.get(k) or "").strip() for k in DIAGNOSIS_KEYS):
                 continue
             parsed = guard_model_credential_advice(parsed)
             cmds = parsed.get("fix_commands") or []
             if not isinstance(cmds, list):
                 cmds = []
+            confidence = str(parsed.get("confidence", "medium")).strip().lower()[:20]
+            if confidence not in {"high", "medium", "low"}:
+                confidence = "medium"
             return {
                 "summary": str(parsed.get("summary", "Gemma triage complete."))[:500],
                 "failing_step": str(parsed.get("failing_step", "Unknown"))[:200],
                 "root_cause": str(parsed.get("root_cause", ""))[:800],
                 "suggested_fix": str(parsed.get("suggested_fix", ""))[:800],
-                "confidence": str(parsed.get("confidence", "medium"))[:20],
+                "confidence": confidence,
                 "fix_commands": [str(c)[:200] for c in cmds][:8],
                 "engine": "gemma",
                 "patterns": [],
