@@ -1,6 +1,7 @@
 """Offline contract checks for the Zetaris evidence hook."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -10,7 +11,12 @@ import uuid
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from integrations.zetaris.client import ZetarisClient, load_environment, validate_read_only_sql
+from integrations.zetaris.client import (
+    ZetarisClient,
+    _read_spark_sql_string,
+    load_environment,
+    validate_read_only_sql,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -268,23 +274,46 @@ class ZetarisClientTests(unittest.TestCase):
         self.assertIn("FROM actions_nurse_demo.ci_failure_signatures", result["result"]["sql"])
 
     def test_ci_evidence_step_stays_inside_one_spark_string_literal(self) -> None:
-        def spark_literal_and_rest(sql: str) -> tuple[str, str]:
-            """Read the WHERE literal the way Spark SQL does (backslash escapes, quote closes)."""
-            start = sql.index("failing_step = '") + len("failing_step = '")
-            out, i = [], start
-            while sql[i] != "'":
-                if sql[i] == "\\":
-                    i += 1
-                out.append(sql[i])
-                i += 1
-            return "".join(out), sql[i + 1:]
-
         client = ZetarisClient(environment={})
         for step in ["Typecheck / tsc", "it's", "x\\' OR 1=1 --", "a\\\\' UNION SELECT 1 --", "trailing\\"]:
             sql = client.query_ci_evidence(step)["result"]["sql"]
-            literal, rest = spark_literal_and_rest(sql)
+            start = sql.index("failing_step = '") + len("failing_step = ")
+            literal, end = _read_spark_sql_string(sql, start)
             self.assertEqual(literal, step)
-            self.assertEqual(rest, " ORDER BY observed_at DESC LIMIT 3")
+            self.assertEqual(sql[end:], " ORDER BY observed_at DESC LIMIT 3")
+
+    def test_fixture_filter_understands_spark_quote_escapes(self) -> None:
+        specials = ["it's", "x\\' OR 1=1 --", "trailing\\"]
+        payload = {
+            "notice": "test fixture",
+            "columns": [
+                "failure_signature",
+                "failing_step",
+                "occurrences",
+                "latest_recommendation",
+                "source",
+            ],
+            "data": [
+                [f"sig-{index}", step, "1", "rec", "test"]
+                for index, step in enumerate(specials)
+            ] + [["other", "Typecheck / tsc", "1", "rec", "test"]],
+        }
+        client = ZetarisClient(environment={})
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture_dir = Path(tmp)
+            (fixture_dir / "ci-failure-signatures.json").write_text(
+                json.dumps(payload), encoding="utf-8",
+            )
+            with patch("integrations.zetaris.client.FIXTURE_DIR", fixture_dir):
+                for step in specials:
+                    result = client.query_ci_evidence(step)
+                    self.assertEqual(result["result"]["row_count"], 1, step)
+                    self.assertEqual(result["result"]["data"][0]["failing_step"], step)
+                result = client.query_ci_evidence("Typecheck / tsc")
+                self.assertEqual(result["result"]["row_count"], 1)
+                self.assertEqual(
+                    result["result"]["data"][0]["failing_step"], "Typecheck / tsc",
+                )
 
     def test_invalid_ci_evidence_table_name_cannot_reach_live_querying(self) -> None:
         client = ZetarisClient(environment={
